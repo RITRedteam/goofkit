@@ -1,6 +1,6 @@
 /*
 Project: goofkit
-Author: Jack "Hulto" McKenna & Rayne Caffero
+Author: Jack "Hulto" McKenna & Rayne Cafaro
 Description: trampolining rootkit. Used to hide files, proccesses, and network connections from the user.
 */
 
