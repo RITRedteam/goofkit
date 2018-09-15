@@ -55,7 +55,7 @@ typedef unsigned long psize;
 	} while (0);
 
 
-MODULE_LICENSE("GPL");
+MODULE_LICENSE("MIT");
 
 //Declare vars
 psize *sys_call_table;
