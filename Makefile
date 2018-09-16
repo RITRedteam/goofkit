@@ -13,5 +13,5 @@ ins:
 	dmesg | grep goof --color=always
 
 clean:
-	rm -rf *.o *.ko *.symvers *.mod *.order
+	rm -rf *.o *.ko *.symvers *.mod *.mod.c *.order
 
