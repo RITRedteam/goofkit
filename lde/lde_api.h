@@ -42,5 +42,5 @@ struct decoded_instruction {
   *                             store the decoded instuction information is.
   * @return 0 on success, 1 on failure.
   */
-char decode(char* instruction, struct decoded_instruction* d);
+char decode(unsigned char* instruction, struct decoded_instruction* d);
 
