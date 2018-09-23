@@ -20,10 +20,6 @@
 #include <asm/pgtable.h>
 #include <linux/vmalloc.h>
 
-//User defined variables
-#include "user.h"
-
-
 /** ~~~~~~~~~~~~ Kernel specific imports ~~~~~~~~~~~~ **/
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0)
 	#include <linux/proc_ns.h>

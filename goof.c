@@ -7,6 +7,11 @@ Task:
 */
 #include "goof.h"
 
+//User defined variables
+#include "user.h"
+
+
+
 // Iterate over the entire possible range until you find some __NR_close
 /* Find the syscall table.
    We will use this to refrence all of the syscalls that we want to overwrite.
