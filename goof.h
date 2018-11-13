@@ -114,6 +114,7 @@ unsigned char *jump; // What gets populated by the JUMP_TEMPLATE. Instantiated w
 
 // Easy hooking hanglers
 int (*original_kill)(pid_t, int);
+int (*original_open)(const char *pathname, int flags, mode_t mode);
 // Not used
 //int (*original_getdents)(unsigned int, struct  linux_dirent *, unsigned int);
 //int (*original_getdents64)(unsigned int, struct linux_dirent *, unsigned int);

