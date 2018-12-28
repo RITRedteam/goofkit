@@ -1,0 +1,35 @@
+K 25
+svn:wc:ra_dav:version-url
+V 52
+/svn/!svn/ver/125/branches/reg_test/beaengineSources
+END
+COPYING.txt
+K 25
+svn:wc:ra_dav:version-url
+V 64
+/svn/!svn/ver/125/branches/reg_test/beaengineSources/COPYING.txt
+END
+README.txt
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/svn/!svn/ver/125/branches/reg_test/beaengineSources/README.txt
+END
+CMakeLists.txt
+K 25
+svn:wc:ra_dav:version-url
+V 67
+/svn/!svn/ver/125/branches/reg_test/beaengineSources/CMakeLists.txt
+END
+BeaEngine.c
+K 25
+svn:wc:ra_dav:version-url
+V 64
+/svn/!svn/ver/125/branches/reg_test/beaengineSources/BeaEngine.c
+END
+COPYING.LESSER.txt
+K 25
+svn:wc:ra_dav:version-url
+V 71
+/svn/!svn/ver/125/branches/reg_test/beaengineSources/COPYING.LESSER.txt
+END

