@@ -46,6 +46,6 @@ To create a new hook you will need to do the following:
 1. Increment the `HOOKS_COUNT` macro
 2. Define a "goofy" function `goofy_open()` in goof.h
 3. Write your function in goof.c
-4. Add a hook: 
-  a. In  `goof_init` add a `create_tramp` call. Specify the source (eg. `sys_close`). Specify the goof function. Provide an ID number < HOOKS_COUNT. Specify the byte count provided by the `number_of_bytes_to_pad_jump` function.
-  b. In `goof_exit` add a remove function passing the ID number of the hook from the previous step.
+4. Add a hook: <br>
+  a. In  `goof_init` add a `create_tramp` call. Specify the source (eg. `sys_close`). Specify the goof function. Provide an ID number < HOOKS_COUNT. Specify the byte count provided by the `number_of_bytes_to_pad_jump` function.<br>
+  b. In `goof_exit` add a remove function passing the ID number of the hook from the previous step.<br>
