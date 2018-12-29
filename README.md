@@ -38,7 +38,7 @@ while len < hook_len:
 Trampolining is the reason Goofkit is able to do inline function hooking without multiple writes to the system calls. When a rookit uses inline hooking and wants to pause a specific hook or all malicious behavior it needs to rewrite the systemcall each time. Trampolining allows Goofkit to seemlessly resume normal execution. Instead of rewriting the system call execution can be passed along through the malicious hook to the trampoline and subsequently the original function.
 
 <pre>
-syscall_open --> malicious_open --> open_trampoline --> *syscall_open+offset_of_hook*
+syscall_open --> malicious_open --> open_trampoline --> syscall_open+offset_of_hook
 </pre>
 
 ## Creating new hook
