@@ -1,0 +1,143 @@
+K 25
+svn:wc:ra_dav:version-url
+V 71
+/svn/!svn/ver/125/branches/reg_test/beaengineSources/Includes/instr_set
+END
+opcodes_Grp1.c
+K 25
+svn:wc:ra_dav:version-url
+V 86
+/svn/!svn/ver/125/branches/reg_test/beaengineSources/Includes/instr_set/opcodes_Grp1.c
+END
+opcodes_Grp2.c
+K 25
+svn:wc:ra_dav:version-url
+V 86
+/svn/!svn/ver/125/branches/reg_test/beaengineSources/Includes/instr_set/opcodes_Grp2.c
+END
+opcodes_Grp3.c
+K 25
+svn:wc:ra_dav:version-url
+V 86
+/svn/!svn/ver/125/branches/reg_test/beaengineSources/Includes/instr_set/opcodes_Grp3.c
+END
+opcodes_Grp4.c
+K 25
+svn:wc:ra_dav:version-url
+V 86
+/svn/!svn/ver/125/branches/reg_test/beaengineSources/Includes/instr_set/opcodes_Grp4.c
+END
+opcodes_CLMUL.c
+K 25
+svn:wc:ra_dav:version-url
+V 87
+/svn/!svn/ver/125/branches/reg_test/beaengineSources/Includes/instr_set/opcodes_CLMUL.c
+END
+opcodes_Grp5.c
+K 25
+svn:wc:ra_dav:version-url
+V 86
+/svn/!svn/ver/125/branches/reg_test/beaengineSources/Includes/instr_set/opcodes_Grp5.c
+END
+opcodes_Grp6.c
+K 25
+svn:wc:ra_dav:version-url
+V 86
+/svn/!svn/ver/125/branches/reg_test/beaengineSources/Includes/instr_set/opcodes_Grp6.c
+END
+opcodes_Grp7.c
+K 25
+svn:wc:ra_dav:version-url
+V 86
+/svn/!svn/ver/125/branches/reg_test/beaengineSources/Includes/instr_set/opcodes_Grp7.c
+END
+opcodes_Grp8.c
+K 25
+svn:wc:ra_dav:version-url
+V 86
+/svn/!svn/ver/125/branches/reg_test/beaengineSources/Includes/instr_set/opcodes_Grp8.c
+END
+opcodes_Grp9.c
+K 25
+svn:wc:ra_dav:version-url
+V 86
+/svn/!svn/ver/125/branches/reg_test/beaengineSources/Includes/instr_set/opcodes_Grp9.c
+END
+opcodes_prefixes.c
+K 25
+svn:wc:ra_dav:version-url
+V 90
+/svn/!svn/ver/125/branches/reg_test/beaengineSources/Includes/instr_set/opcodes_prefixes.c
+END
+opcodes_N_Z.c
+K 25
+svn:wc:ra_dav:version-url
+V 85
+/svn/!svn/ver/125/branches/reg_test/beaengineSources/Includes/instr_set/opcodes_N_Z.c
+END
+opcodes_SSE.c
+K 25
+svn:wc:ra_dav:version-url
+V 85
+/svn/!svn/ver/125/branches/reg_test/beaengineSources/Includes/instr_set/opcodes_SSE.c
+END
+opcodes_FPU.c
+K 25
+svn:wc:ra_dav:version-url
+V 85
+/svn/!svn/ver/125/branches/reg_test/beaengineSources/Includes/instr_set/opcodes_FPU.c
+END
+Data_opcode.h
+K 25
+svn:wc:ra_dav:version-url
+V 85
+/svn/!svn/ver/125/branches/reg_test/beaengineSources/Includes/instr_set/Data_opcode.h
+END
+opcodes_Grp12.c
+K 25
+svn:wc:ra_dav:version-url
+V 87
+/svn/!svn/ver/125/branches/reg_test/beaengineSources/Includes/instr_set/opcodes_Grp12.c
+END
+opcodes_Grp13.c
+K 25
+svn:wc:ra_dav:version-url
+V 87
+/svn/!svn/ver/125/branches/reg_test/beaengineSources/Includes/instr_set/opcodes_Grp13.c
+END
+opcodes_A_M.c
+K 25
+svn:wc:ra_dav:version-url
+V 85
+/svn/!svn/ver/125/branches/reg_test/beaengineSources/Includes/instr_set/opcodes_A_M.c
+END
+opcodes_Grp14.c
+K 25
+svn:wc:ra_dav:version-url
+V 87
+/svn/!svn/ver/125/branches/reg_test/beaengineSources/Includes/instr_set/opcodes_Grp14.c
+END
+opcodes_Grp15.c
+K 25
+svn:wc:ra_dav:version-url
+V 87
+/svn/!svn/ver/125/branches/reg_test/beaengineSources/Includes/instr_set/opcodes_Grp15.c
+END
+opcodes_Grp16.c
+K 25
+svn:wc:ra_dav:version-url
+V 87
+/svn/!svn/ver/125/branches/reg_test/beaengineSources/Includes/instr_set/opcodes_Grp16.c
+END
+opcodes_MMX.c
+K 25
+svn:wc:ra_dav:version-url
+V 85
+/svn/!svn/ver/125/branches/reg_test/beaengineSources/Includes/instr_set/opcodes_MMX.c
+END
+opcodes_AES.c
+K 25
+svn:wc:ra_dav:version-url
+V 85
+/svn/!svn/ver/125/branches/reg_test/beaengineSources/Includes/instr_set/opcodes_AES.c
+END

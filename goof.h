@@ -119,7 +119,7 @@ int (*original_open)(const char *pathname, int flags, mode_t mode);
 //int (*original_getdents)(unsigned int, struct  linux_dirent *, unsigned int);
 //int (*original_getdents64)(unsigned int, struct linux_dirent *, unsigned int);
 //int (*original_open)(const char *, int, mode_t);
-//int (*original_uname)(struct utsname *);
+int (*original_uname)(struct utsname *);
 
 
 struct Hook **hooks;
