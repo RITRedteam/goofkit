@@ -385,6 +385,34 @@ void remove_tramp(unsigned int id ){
 	ENABLE_W_PROTECTED_MEMORY
 }
 
+/* @brief count the number of bytes required to pad the instruction safely 
+ *
+ * @param src the address of the syscall that is being evaluated. 
+ * 
+*/
+int number_of_bytes_to_pad_jump(unsigned char *src ){
+	int res = 0;
+	
+	DISASM MyDisasm;
+	int len = 0;
+	int Error = 0;
+
+	(void) memset(&MyDisasm, 0, sizeof(DISASM));
+	MyDisasm.EIP = src; 
+	for(int i = 0; i < 12 && res < HOOK_LEN ; i++){
+		len = Disasm(&MyDisasm);
+		printk("len: %d\n", len);
+		for(int j = 0; j < len; j++){
+			printk("%02x ", *(((unsigned char *)MyDisasm.EIP)+j));
+		}
+		res += len;
+		MyDisasm.EIP = MyDisasm.EIP + len;
+		
+		printk("\n");
+	}
+	return res;
+}
+
 //Defines the maximum number of hooks to be stored in the array
 #define HOOKS_COUNT 3
 
@@ -397,11 +425,6 @@ goof_init(void) {
 	printk("[goof] module loaded\n");
 	
 	//Initialize disasm
-	DISASM MyDisasm;
-	int len = 0;
-	int Error = 0;
-
-	(void) memset(&MyDisasm, 0, sizeof(DISASM));
 
 	hooks = kmalloc(sizeof(struct Hook *)*HOOKS_COUNT, GFP_KERNEL);
 
@@ -440,7 +463,7 @@ goof_init(void) {
 	//create_tramp((unsigned long*)__sys_call_table[__NR_kill], (unsigned long *)goofy_kill, 2, 16);
 	//Creating a new trampoline - DEBUG
 */	
-	printk("[goof] DEBUG\n\n ");
+/*	printk("[goof] DEBUG\n\n ");
 	//unsigned char *ptr_tmp = (unsigned char *)__sys_call_table[__NR_uname];
 	MyDisasm.EIP = __sys_call_table[__NR_uname]; //(UIntPtr) ptr_tmp[i];
 	for(int i = 0; i < 5; i++){
@@ -453,7 +476,9 @@ goof_init(void) {
 		
 		printk("\n");
 	}
-
+*/
+	int padding_size = number_of_bytes_to_pad_jump(__sys_call_table[__NR_uname]);
+	printk("You will need to pad your hook to: %d\n", padding_size);
 	return 0;
 }
 static void __exit
