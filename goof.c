@@ -273,6 +273,16 @@ int goofy_kill(pid_t pid, int sig){
 	return ret;
 }
 
+void *goof_malloc(size_t size, gfp_t flags){
+	printk("[Goof] kmalloc hooked");
+	//Execute original funciton
+	//Calling the original function to fill out our buf variable.
+	//Any additions need to happen after the inline assembly otherwise
+	//The original function will return strange garbage
+	int (*func_ptr)(size_t, gfp_t) = (void *)hooks[3]->trampoline;
+	return func_ptr(size, flags);
+}
+
 /* @brief create and insert inline hook, create trampoline
  * 
  * It's a beast... I'll try to include a diagram.
@@ -452,7 +462,10 @@ goof_init(void) {
 	create_tramp((unsigned long*)__sys_call_table[__NR_kill], (unsigned long *)goofy_kill, 2, padding_size);
 	printk("Hooked kill with %d bytes\n\n", padding_size);
 
-
+	//padding_size = number_of_bytes_to_pad_jump((unsigned char *)kmalloc);
+	//create_tramp((unsigned long*)kmalloc, (unsigned long *)goof_malloc, 3, padding_size);
+	//printk("Hooked malloc with %d bytes\n\n", padding_size);
+	
 	return 0;
 }
 static void __exit
@@ -460,6 +473,7 @@ goof_exit(void) {
 	remove_tramp(0);
 	remove_tramp(1);
 	remove_tramp(2);
+	//remove_tramp(3);
 
 /*
 	DISABLE_W_PROTECTED_MEMORY
