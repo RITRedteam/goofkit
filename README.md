@@ -15,6 +15,13 @@ Goofkit is an inline function hooking and trampolining rootkit. Goofkit uses inl
 * _Netfilter hook - WIP_
 * _Privelege escalation - WIP_
 
+## Support
+| Kernel Ver.   | Debian 9 | Centos 7|
+| ------------- |--------| ------|
+| 4.9.0         | ?      | ?     |
+| 3.10.0-957    | ?      | ?     |
+| xxxxxxxxxxxxx | ?      | ?     |
+
 ## Inline hooking
 Instead of using the standard method of system call hooking (overwriting the system call table) Goofkit inserts a jump instruction to change the code flow.
 <pre>
