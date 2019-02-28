@@ -22,6 +22,8 @@ Goofkit is an inline function hooking and trampolining rootkit. Goofkit uses inl
 | 3.10.0-957    | ?      | ?     |
 | xxxxxxxxxxxxx | ?      | ?     |
 
+_fixing compiliation errors on RHEL_
+
 ## Inline hooking
 Instead of using the standard method of system call hooking (overwriting the system call table) Goofkit inserts a jump instruction to change the code flow.
 <pre>
