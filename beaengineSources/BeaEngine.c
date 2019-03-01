@@ -20,7 +20,7 @@
  *    along with BeaEngine.  If not, see <http://www.gnu.org/licenses/>. */
 
 
-#include "include/beaengine/BeaEngine.h"
+#include "../include/beaengine/BeaEngine.h"
 #include "Includes/protos.h"
 #include "Includes/internal_datas.h"
 #include "Includes/instr_set/Data_opcode.h"
