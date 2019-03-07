@@ -15,13 +15,31 @@ Goofkit is an inline function hooking and trampolining rootkit. Goofkit uses inl
 * _Netfilter hook - WIP_
 * _Privelege escalation - WIP_
 
-## Support
-Debian 8 Jessie <br>
-Kernel: 3.16.0-4-amd64
-* uname ✅
-* getdents ✅
-* kill ✅
+## Tested on:
+<pre>
+| Debian 8 Jessie           | Debian 9 Stretch        |
+| Kernel: 3.16.0-4-amd64    | Kernel: 4.9.0-7-amd64   |
+| * uname ✅                | * uname ✅              |
+| * getdents ✅             | * getdents ✅           |
+| * kill ✅                 | * kill ✅               |
+--------------------------------------------------------
+| Centos 7                  | Fedora 9 Stretch        |
+| Kernel: 3.10.0-957        | Kernel: 4.9.0-7-amd64   |
+| * uname 🚫                | * uname                 |
+| * getdents ✅             | * getdents              |
+| * kill 🚫                 | * kill                  |
+--------------------------------------------------------
+| Kali 2                    | Fedora 9 Stretch        |
+| Kernel:         | Kernel: 4.9.0-7-amd64   |
+| * uname                 | * uname                 |
+| * getdents              | * getdents              |
+| * kill                  | * kill                  |
 
+</pre>
+
+
+* Centos 7 kill error *
+Seems to make it through syscall kernel crashes after goofy_kill returns.
 
 
 
