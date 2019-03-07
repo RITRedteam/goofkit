@@ -17,7 +17,7 @@ Goofkit is an inline function hooking and trampolining rootkit. Goofkit uses inl
 
 ## Support
 Debian 8 Jessie <br>
-Kernel: 3.16.0-4-amd64 <br>
+Kernel: 3.16.0-4-amd64
 * uname ✅
 * getdents ✅
 * kill ✅
