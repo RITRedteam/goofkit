@@ -16,11 +16,11 @@ Goofkit is an inline function hooking and trampolining rootkit. Goofkit uses inl
 * _Privelege escalation - WIP_
 
 ## Support
-Debian 8 Jessie
-Kernel: 3.16.0-4-amd64
-uname ✅
-getdents ✅
-kill ✅
+Debian 8 Jessie <br>
+Kernel: 3.16.0-4-amd64 <br>
+* uname ✅
+* getdents ✅
+* kill ✅
 
 
 
