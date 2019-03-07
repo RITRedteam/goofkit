@@ -16,13 +16,15 @@ Goofkit is an inline function hooking and trampolining rootkit. Goofkit uses inl
 * _Privelege escalation - WIP_
 
 ## Support
-| Features      | Debian 9 | Centos 7| Kali  |
-| ------------- |----------|---------|-------|  
-| uname         | ?        | ?       | ?     |
-| getdents      | ?        | ?       | ?     |
-| kill          | ?        | ?       | ?     |
+Debian 8 Jessie
+Kernel: 3.16.0-4-amd64
+uname ✅
+getdents ✅
+kill ✅
 
-_fixing compiliation errors on RHEL_
+
+
+
 
 ## Inline hooking
 Instead of using the standard method of system call hooking (overwriting the system call table) Goofkit inserts a jump instruction to change the code flow.
