@@ -23,17 +23,11 @@ Goofkit is an inline function hooking and trampolining rootkit. Goofkit uses inl
 | * getdents ✅             | * getdents ✅           |
 | * kill ✅                 | * kill ✅               |
 --------------------------------------------------------
-| Centos 7                  | Fedora 9 Stretch        |
-| Kernel: 3.10.0-957        | Kernel: 4.9.0-7-amd64   |
-| * uname 🚫                | * uname                 |
-| * getdents ✅             | * getdents              |
-| * kill 🚫                 | * kill                  |
---------------------------------------------------------
-| Kali 2                    | Fedora 9 Stretch        |
-| Kernel:         | Kernel: 4.9.0-7-amd64   |
-| * uname                 | * uname                 |
-| * getdents              | * getdents              |
-| * kill                  | * kill                  |
+| Centos 7                  |                         |
+| Kernel: 3.10.0-957        |                         |
+| * uname 🚫                |                         |
+| * getdents ✅             |                         |
+| * kill 🚫                 |                         |
 
 </pre>
 
