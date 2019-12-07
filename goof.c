@@ -326,6 +326,14 @@ unsigned char *create_tramp(unsigned long *src, unsigned long *new_func, unsigne
 	//Allocate enough memory to accomodate the length of the syscall specific hook
 	//and also our jump back (15 bytes)
 	h->trampoline =  __vmalloc(h->hook_len + HOOK_LEN, GFP_KERNEL, PAGE_KERNEL_EXEC);
+	
+	//TODO:
+	// 1. Iterate through og_code instructions, copying them into trampoline
+        // 2. Check if instruction is a relative jump *Check for relative jumps that stay within the og_code*
+	// 3. Calculate absolute destination (og_func + relative jump offest + relative jump address)
+	// 4. Build an absolute jump with that destination
+	// 5. Copy that jump into the trampoline instead of the relative jump
+	// 6. Repeat
 	memcpy(h->trampoline, h->original_code, h->hook_len);
 	
 	//Create jump back
